@@ -9,6 +9,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   TOOL_CHAIN: "1.79"
+  TOOL_CHAIN_NIGHTLY: "nightly-2024-06-28"
 
 jobs:
   clippy-binaries:
@@ -120,7 +121,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@nightly
         with:
           components: rustfmt
-          toolchain: ${{ env.TOOL_CHAIN }}-nightly
+          toolchain: ${{ env.TOOL_CHAIN_NIGHTLY }} # fmt need the nightly flag, please update this if reallly needed
       - run: cargo fmt --all --check
 
   codespell:
