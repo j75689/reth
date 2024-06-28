@@ -120,7 +120,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@nightly
         with:
           components: rustfmt
-          toolchain: ${{ env.TOOL_CHAIN }}
+          toolchain: ${{ env.TOOL_CHAIN }}-nightly
       - run: cargo fmt --all --check
 
   codespell:
