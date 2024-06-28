@@ -12,6 +12,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   SEED: rustethereumethereumrust
+  TOOL_CHAIN: "1.79"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
@@ -31,6 +32,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.TOOL_CHAIN }}
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
@@ -79,6 +82,8 @@ jobs:
           submodules: recursive
           fetch-depth: 1
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.TOOL_CHAIN }}
       - uses: taiki-e/install-action@nextest
       - uses: Swatinem/rust-cache@v2
         with:
@@ -103,6 +108,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.TOOL_CHAIN }}
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true

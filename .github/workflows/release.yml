@@ -13,6 +13,7 @@ env:
   OP_IMAGE_NAME: ${{ github.repository_owner }}/op-reth
   IMAGE_NAME: ${{ github.repository_owner }}/reth
   CARGO_TERM_COLOR: always
+  TOOL_CHAIN: "1.79"
 
 jobs:
   extract-version:
@@ -59,6 +60,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           target: ${{ matrix.configs.target }}
+          toolchain: ${{ env.TOOL_CHAIN }}
       - uses: taiki-e/install-action@cross
       - uses: Swatinem/rust-cache@v2
         with:
