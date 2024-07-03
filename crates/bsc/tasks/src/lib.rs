@@ -136,6 +136,8 @@ impl Storage {
             headers: LimitedHashSet::new(STORAGE_CACHE_NUM),
             hash_to_number: LimitedHashSet::new(STORAGE_CACHE_NUM),
             bodies: LimitedHashSet::new(STORAGE_CACHE_NUM),
+            best_finalized_hash: B256::default(),
+            best_safe_hash: B256::default(),
         };
         storage.headers.put(best_block.number, best_block.clone());
         storage.hash_to_number.put(best_block.hash(), best_block.number);
@@ -168,6 +170,10 @@ pub(crate) struct StorageInner {
     pub(crate) best_hash: B256,
     /// The best header in the chain
     pub(crate) best_header: SealedHeader,
+    /// Tracks hash of best finalized block
+    pub(crate) best_finalized_hash: B256,
+    /// Tracks hash of best safe block
+    pub(crate) best_safe_hash: B256,
 }
 
 // === impl StorageInner ===
@@ -206,6 +212,12 @@ impl StorageInner {
         trace!(target: "parlia::client", num=self.best_block, hash=?self.best_hash, "inserting new header");
         self.headers.put(header.number, header);
         self.hash_to_number.put(self.best_hash, self.best_block);
+    }
+
+    /// Inserts new finalized and safe hash
+    pub(crate) fn insert_finalized_and_safe_hash(&mut self, finalized: B256, safe: B256) {
+        self.best_finalized_hash = finalized;
+        self.best_safe_hash = safe;
     }
 }
 
