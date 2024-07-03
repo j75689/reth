@@ -15,7 +15,7 @@ use reth_beacon_consensus::{
 use reth_blockchain_tree::{BlockchainTree, ShareableBlockchainTree, TreeExternals};
 
 #[cfg(feature = "bsc")]
-use reth_bsc_consensus::ParliaEngineBuilder;
+use reth_bsc_tasks::ParliaEngineBuilder;
 use reth_consensus::Consensus;
 use reth_consensus_debug_client::{DebugConsensusClient, EtherscanBlockProvider, RpcBlockProvider};
 use reth_exex::ExExManagerHandle;

@@ -1,11 +1,12 @@
-use crate::{client::ParliaClient, Parlia, Storage};
+use crate::{client::ParliaClient, Storage};
+use reth_bsc_consensus::Parlia;
 use reth_beacon_consensus::{BeaconEngineMessage, ForkchoiceStatus};
 use reth_chainspec::ChainSpec;
 use reth_engine_primitives::EngineTypes;
 use reth_network::message::EngineMessage;
 use reth_network_p2p::{headers::client::HeadersClient, priority::Priority};
 use reth_primitives::{Block, BlockBody, BlockHashOrNumber, B256};
-use reth_provider::BlockReaderIdExt;
+use reth_provider::{BlockReaderIdExt, CanonChainTracker, ParliaSnapshotReader};
 use reth_rpc_types::engine::ForkchoiceState;
 use std::{
     clone::Clone,
@@ -47,13 +48,16 @@ struct BlockInfo {
 }
 
 /// A Future that listens for new headers and puts into storage
-pub(crate) struct ParliaEngineTask<Engine: EngineTypes, Client: BlockReaderIdExt> {
+pub(crate) struct ParliaEngineTask<
+    Engine: EngineTypes,
+    Provider: BlockReaderIdExt + ParliaSnapshotReader + CanonChainTracker,
+> {
     /// The configured chain spec
     chain_spec: Arc<ChainSpec>,
     /// The coneensus instance
     consensus: Parlia,
-    /// The client used to read the block and header from the inserted chain
-    client: Client,
+    /// The provider used to read the block and header from the inserted chain
+    provider: Provider,
     /// The client used to fetch headers
     block_fetcher: ParliaClient,
     /// The interval of the block producing
@@ -71,15 +75,17 @@ pub(crate) struct ParliaEngineTask<Engine: EngineTypes, Client: BlockReaderIdExt
 }
 
 // === impl ParliaEngineTask ===
-impl<Engine: EngineTypes + 'static, Client: BlockReaderIdExt + Clone + 'static>
-    ParliaEngineTask<Engine, Client>
+impl<
+        Engine: EngineTypes + 'static,
+        Provider: BlockReaderIdExt + ParliaSnapshotReader + CanonChainTracker + Clone + 'static,
+    > ParliaEngineTask<Engine, Provider>
 {
     /// Creates a new instance of the task
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn start(
         chain_spec: Arc<ChainSpec>,
         consensus: Parlia,
-        client: Client,
+        provider: Provider,
         to_engine: UnboundedSender<BeaconEngineMessage<Engine>>,
         network_block_event_rx: Arc<Mutex<UnboundedReceiver<EngineMessage>>>,
         storage: Storage,
@@ -90,7 +96,7 @@ impl<Engine: EngineTypes + 'static, Client: BlockReaderIdExt + Clone + 'static>
         let this = Self {
             chain_spec,
             consensus,
-            client,
+            provider,
             to_engine,
             network_block_event_rx,
             storage,
@@ -111,7 +117,7 @@ impl<Engine: EngineTypes + 'static, Client: BlockReaderIdExt + Clone + 'static>
         let mut interval = interval(Duration::from_secs(block_interval));
         let chain_spec = self.chain_spec.clone();
         let storage = self.storage.clone();
-        let client = self.client.clone();
+        let client = self.provider.clone();
         let block_fetcher = self.block_fetcher.clone();
         let consensus = self.consensus.clone();
         let fork_choice_tx = self.fork_choice_tx.clone();
@@ -282,42 +288,47 @@ impl<Engine: EngineTypes + 'static, Client: BlockReaderIdExt + Clone + 'static>
                                     finalized_block_hash: B256::ZERO,
                                 };
 
+                                loop {
+                                    // send the new update to the engine, this will trigger the engine
+                                    // to download and execute the block we just inserted
+                                    let (tx, rx) = oneshot::channel();
+                                    let _ = to_engine.send(BeaconEngineMessage::ForkchoiceUpdated {
+                                        state,
+                                        payload_attrs: None,
+                                        tx,
+                                    });
+                                    debug!(target: "consensus::parlia", ?state, "Sent fork choice update");
 
-                                // send the new update to the engine, this will trigger the engine
-                                // to download and execute the block we just inserted
-                                let (tx, rx) = oneshot::channel();
-                                let _ = to_engine.send(BeaconEngineMessage::ForkchoiceUpdated {
-                                    state,
-                                    payload_attrs: None,
-                                    tx,
-                                });
-                                debug!(target: "consensus::parlia", ?state, "Sent fork choice update");
-
-                                let rx_result = match rx.await {
-                                    Ok(result) => result,
-                                    Err(err)=> {
-                                        error!(target: "consensus::parlia", ?err, "Fork choice update response failed");
-                                        continue
-                                    }
-                                };
-                                match rx_result {
-                                    Ok(fcu_response) => {
-                                        match fcu_response.forkchoice_status() {
-                                            ForkchoiceStatus::Valid => {
-                                                trace!(target: "consensus::parlia", ?fcu_response, "Forkchoice update returned valid response");
-                                            }
-                                            ForkchoiceStatus::Invalid => {
-                                                error!(target: "consensus::parlia", ?fcu_response, "Forkchoice update returned invalid response");
-                                            }
-                                            ForkchoiceStatus::Syncing => {
-                                                debug!(target: "consensus::parlia", ?fcu_response, "Forkchoice update returned SYNCING, waiting for VALID");
+                                    let rx_result = match rx.await {
+                                        Ok(result) => result,
+                                        Err(err)=> {
+                                            error!(target: "consensus::parlia", ?err, "Fork choice update response failed");
+                                            continue
+                                        }
+                                    };
+                                    match rx_result {
+                                        Ok(fcu_response) => {
+                                            match fcu_response.forkchoice_status() {
+                                                ForkchoiceStatus::Valid => {
+                                                    trace!(target: "consensus::parlia", ?fcu_response, "Forkchoice update returned valid response");
+                                                    break
+                                                }
+                                                ForkchoiceStatus::Invalid => {
+                                                    error!(target: "consensus::parlia", ?fcu_response, "Forkchoice update returned invalid response");
+                                                    break
+                                                }
+                                                ForkchoiceStatus::Syncing => {
+                                                    debug!(target: "consensus::parlia", ?fcu_response, "Forkchoice update returned SYNCING, waiting for VALID");
+                                                    continue
+                                                }
                                             }
                                         }
-                                    }
-                                    Err(err) => {
-                                        error!(target: "consensus::parlia", %err, "Parlia fork choice update failed");
+                                        Err(err) => {
+                                            error!(target: "consensus::parlia", %err, "Parlia fork choice update failed");
+                                        }
                                     }
                                 }
+
                             }
                         }
                     }
@@ -332,8 +343,10 @@ impl<Engine: EngineTypes + 'static, Client: BlockReaderIdExt + Clone + 'static>
     }
 }
 
-impl<Engine: EngineTypes, Client: BlockReaderIdExt> fmt::Debug
-    for ParliaEngineTask<Engine, Client>
+impl<
+        Engine: EngineTypes,
+        Provider: BlockReaderIdExt + ParliaSnapshotReader + CanonChainTracker,
+    > fmt::Debug for ParliaEngineTask<Engine, Provider>
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("chain_spec")
