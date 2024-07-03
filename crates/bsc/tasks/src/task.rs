@@ -1,17 +1,18 @@
 use crate::{client::ParliaClient, Storage};
-use reth_bsc_consensus::Parlia;
 use reth_beacon_consensus::{BeaconEngineMessage, ForkchoiceStatus};
+use reth_bsc_consensus::Parlia;
 use reth_chainspec::ChainSpec;
 use reth_engine_primitives::EngineTypes;
+use reth_evm_bsc::SnapshotReader;
 use reth_network::message::EngineMessage;
 use reth_network_p2p::{headers::client::HeadersClient, priority::Priority};
-use reth_primitives::{Block, BlockBody, BlockHashOrNumber, B256};
-use reth_provider::{BlockReaderIdExt, CanonChainTracker, ParliaSnapshotReader};
+use reth_primitives::{Block, BlockBody, BlockHashOrNumber, SealedHeader, B256};
+use reth_provider::{BlockReaderIdExt, CanonChainTracker, ParliaProvider};
 use reth_rpc_types::engine::ForkchoiceState;
 use std::{
     clone::Clone,
     fmt,
-    sync::Arc,
+    sync::{atomic::AtomicBool, Arc},
     time::{SystemTime, UNIX_EPOCH},
 };
 use tokio::sync::Mutex;
@@ -30,13 +31,12 @@ use tracing::{debug, error, info, trace};
 #[derive(Debug)]
 enum ForkChoiceMessage {
     /// Broadcast new hash.
-    NewBlock(HashEvent),
+    NewHeader(NewHeaderEvent),
 }
 /// internal message to beacon engine
 #[derive(Debug, Clone)]
-struct HashEvent {
-    /// Hash of the block
-    hash: B256,
+struct NewHeaderEvent {
+    header: SealedHeader,
 }
 
 /// A struct that contains a block hash or number and a block
@@ -50,7 +50,8 @@ struct BlockInfo {
 /// A Future that listens for new headers and puts into storage
 pub(crate) struct ParliaEngineTask<
     Engine: EngineTypes,
-    Provider: BlockReaderIdExt + ParliaSnapshotReader + CanonChainTracker,
+    Provider: BlockReaderIdExt + CanonChainTracker,
+    P: ParliaProvider,
 > {
     /// The configured chain spec
     chain_spec: Arc<ChainSpec>,
@@ -58,6 +59,8 @@ pub(crate) struct ParliaEngineTask<
     consensus: Parlia,
     /// The provider used to read the block and header from the inserted chain
     provider: Provider,
+    /// The snapshot reader used to read the snapshot
+    snapshot_reader: Arc<SnapshotReader<P>>,
     /// The client used to fetch headers
     block_fetcher: ParliaClient,
     /// The interval of the block producing
@@ -72,13 +75,16 @@ pub(crate) struct ParliaEngineTask<
     fork_choice_tx: UnboundedSender<ForkChoiceMessage>,
     /// The channel to receive fork choice messages
     fork_choice_rx: Arc<Mutex<UnboundedReceiver<ForkChoiceMessage>>>,
+    /// The flag to indicate if the fork choice update is syncing
+    syncing_fcu: Arc<AtomicBool>,
 }
 
 // === impl ParliaEngineTask ===
 impl<
         Engine: EngineTypes + 'static,
-        Provider: BlockReaderIdExt + ParliaSnapshotReader + CanonChainTracker + Clone + 'static,
-    > ParliaEngineTask<Engine, Provider>
+        Provider: BlockReaderIdExt + CanonChainTracker + Clone + 'static,
+        P: ParliaProvider + 'static,
+    > ParliaEngineTask<Engine, Provider, P>
 {
     /// Creates a new instance of the task
     #[allow(clippy::too_many_arguments)]
@@ -86,6 +92,7 @@ impl<
         chain_spec: Arc<ChainSpec>,
         consensus: Parlia,
         provider: Provider,
+        snapshot_reader: SnapshotReader<P>,
         to_engine: UnboundedSender<BeaconEngineMessage<Engine>>,
         network_block_event_rx: Arc<Mutex<UnboundedReceiver<EngineMessage>>>,
         storage: Storage,
@@ -97,6 +104,7 @@ impl<
             chain_spec,
             consensus,
             provider,
+            snapshot_reader: Arc::new(snapshot_reader),
             to_engine,
             network_block_event_rx,
             storage,
@@ -104,6 +112,7 @@ impl<
             block_interval,
             fork_choice_tx,
             fork_choice_rx: Arc::new(Mutex::new(fork_choice_rx)),
+            syncing_fcu: Arc::new(AtomicBool::new(false)),
         };
 
         this.start_block_event_listening();
@@ -122,6 +131,7 @@ impl<
         let consensus = self.consensus.clone();
         let fork_choice_tx = self.fork_choice_tx.clone();
         let fetch_header_timeout_duration = Duration::from_secs(block_interval);
+        let syncing_fcu = self.syncing_fcu.clone();
 
         tokio::spawn(async move {
             loop {
@@ -172,6 +182,11 @@ impl<
                         info!(target: "consensus::parlia", "block event listener shutting down...");
                         return
                     },
+                }
+
+                let is_syncing_fcu = syncing_fcu.load(std::sync::atomic::Ordering::Relaxed);
+                if is_syncing_fcu {
+                    continue
                 }
 
                 // skip if number is lower than best number
@@ -257,8 +272,9 @@ impl<
                     );
                 }
                 drop(storage);
-                let result = fork_choice_tx
-                    .send(ForkChoiceMessage::NewBlock(HashEvent { hash: sealed_header.hash() }));
+                let result = fork_choice_tx.send(ForkChoiceMessage::NewHeader(NewHeaderEvent {
+                    header: sealed_header.clone(),
+                }));
                 if result.is_err() {
                     error!(target: "consensus::parlia", "Failed to send new block event to fork choice");
                 }
@@ -270,6 +286,11 @@ impl<
     fn start_fork_choice_update_notifier(&self) {
         let fork_choice_rx = self.fork_choice_rx.clone();
         let to_engine = self.to_engine.clone();
+        let snapshot_reader = self.snapshot_reader.clone();
+        let provider = self.provider.clone();
+        let syncing_fcu = self.syncing_fcu.clone();
+        let mut finalized_hash = B256::ZERO;
+        let mut safe_hash = B256::ZERO;
         tokio::spawn(async move {
             loop {
                 let mut fork_choice_rx_guard = fork_choice_rx.lock().await;
@@ -279,15 +300,19 @@ impl<
                             continue;
                         }
                         match msg.unwrap() {
-                            ForkChoiceMessage::NewBlock(event) => {
+                            ForkChoiceMessage::NewHeader(event) => {
                                 // notify parlia engine
+                                let new_header = event.header;
+
                                 let state = ForkchoiceState {
-                                    head_block_hash: event.hash,
+                                    head_block_hash: new_header.hash(),
                                     // safe(justified) and finalized hash will be determined in the parlia consensus engine and stored in the snapshot after the block sync
-                                    safe_block_hash: B256::ZERO,
-                                    finalized_block_hash: B256::ZERO,
+                                    safe_block_hash: safe_hash,
+                                    finalized_block_hash: finalized_hash,
                                 };
 
+                                let mut is_valid_fcu = false;
+                                syncing_fcu.store(true, std::sync::atomic::Ordering::Relaxed);
                                 loop {
                                     // send the new update to the engine, this will trigger the engine
                                     // to download and execute the block we just inserted
@@ -303,14 +328,16 @@ impl<
                                         Ok(result) => result,
                                         Err(err)=> {
                                             error!(target: "consensus::parlia", ?err, "Fork choice update response failed");
-                                            continue
+                                            break
                                         }
                                     };
+
                                     match rx_result {
                                         Ok(fcu_response) => {
                                             match fcu_response.forkchoice_status() {
                                                 ForkchoiceStatus::Valid => {
                                                     trace!(target: "consensus::parlia", ?fcu_response, "Forkchoice update returned valid response");
+                                                    is_valid_fcu = true;
                                                     break
                                                 }
                                                 ForkchoiceStatus::Invalid => {
@@ -328,7 +355,44 @@ impl<
                                         }
                                     }
                                 }
+                                syncing_fcu.store(false, std::sync::atomic::Ordering::Relaxed);
 
+                                if !is_valid_fcu {
+                                    continue
+                                }
+
+                                // first notify chain tracker to help rpc module can know the finalized and safe hash
+                                let snap = match snapshot_reader.snapshot(&new_header, None) {
+                                    Ok(snap) => snap,
+                                    Err(err) => {
+                                        error!(target: "consensus::parlia", %err, "Snapshot not found");
+                                        continue
+                                    }
+                                };
+                                finalized_hash = snap.vote_data.source_hash;
+                                safe_hash = snap.vote_data.target_hash;
+
+                                match provider.sealed_header(snap.vote_data.source_number) {
+                                    Ok(header) => {
+                                        if let Some(sealed_header) = header {
+                                            provider.set_finalized(sealed_header.clone());
+                                        }
+                                    }
+                                    Err(err) => {
+                                        error!(target: "consensus::parlia", %err, "Falied to get source header");
+                                    }
+                                }
+
+                                match provider.sealed_header(snap.vote_data.target_number) {
+                                    Ok(header) => {
+                                        if let Some(sealed_header) = header {
+                                            provider.set_safe(sealed_header.clone());
+                                        }
+                                    }
+                                    Err(err) => {
+                                        error!(target: "consensus::parlia", %err, "Falied to get target header");
+                                    }
+                                }
                             }
                         }
                     }
@@ -343,10 +407,8 @@ impl<
     }
 }
 
-impl<
-        Engine: EngineTypes,
-        Provider: BlockReaderIdExt + ParliaSnapshotReader + CanonChainTracker,
-    > fmt::Debug for ParliaEngineTask<Engine, Provider>
+impl<Engine: EngineTypes, Provider: BlockReaderIdExt + CanonChainTracker, P: ParliaProvider>
+    fmt::Debug for ParliaEngineTask<Engine, Provider, P>
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("chain_spec")

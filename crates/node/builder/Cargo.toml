@@ -80,5 +80,5 @@ tempfile.workspace = true
 
 [features]
 bsc = [
-    "reth-bsc-tasks/bsc"
+    "reth-bsc-tasks/bsc",
 ]
