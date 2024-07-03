@@ -1,4 +1,4 @@
-use crate::{BscBlockExecutionError, BscBlockExecutor};
+use crate::{BscBlockExecutionError, BscBlockExecutor, SnapshotReader};
 use bitset::BitSet;
 use reth_bsc_consensus::{
     get_top_validators_by_voting_power, is_breathe_block, ElectedValidators, ValidatorElectionInfo,
@@ -409,7 +409,8 @@ where
     ) -> Result<(), BlockExecutionError> {
         let justified_header = self.get_header_by_hash(attestation.data.target_hash)?;
         let parent = self.get_header_by_hash(justified_header.parent_hash)?;
-        let snapshot = self.snapshot(&parent, None)?;
+        let snapshot_reader = SnapshotReader::new(self.provider.clone(), self.parlia.clone());
+        let snapshot = &(snapshot_reader.snapshot(&parent, None)?);
         let validators = &snapshot.validators;
         let validators_bit_set = BitSet::from_u64(attestation.vote_address_set);
 

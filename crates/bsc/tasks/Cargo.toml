@@ -27,6 +27,7 @@ reth-network-peers.workspace = true
 reth-beacon-consensus.workspace = true
 reth-bsc-consensus.workspace = true
 reth-evm-bsc.workspace = true
+reth-evm.workspace = true
 
 # eth
 alloy-rlp.workspace = true
