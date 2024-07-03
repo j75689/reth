@@ -248,13 +248,13 @@ pub struct BscBlockExecutor<EvmConfig, DB, P> {
     /// The state to use for execution
     pub(crate) state: State<DB>,
     /// Extra provider for bsc
-    provider: P,
+    pub(crate) provider: Arc<P>,
     /// Parlia consensus instance
-    parlia: Arc<Parlia>,
+    pub(crate) parlia: Arc<Parlia>,
 }
 
 impl<EvmConfig, DB, P> BscBlockExecutor<EvmConfig, DB, P> {
-    /// Creates a new Ethereum block executor.
+    /// Creates a new Parlia block executor.
     pub fn new(
         chain_spec: Arc<ChainSpec>,
         evm_config: EvmConfig,
@@ -263,7 +263,13 @@ impl<EvmConfig, DB, P> BscBlockExecutor<EvmConfig, DB, P> {
         provider: P,
     ) -> Self {
         let parlia = Arc::new(Parlia::new(Arc::clone(&chain_spec), parlia_config));
-        Self { executor: BscEvmExecutor { chain_spec, evm_config }, state, provider, parlia }
+        let shared_provider = Arc::new(provider);
+        Self {
+            executor: BscEvmExecutor { chain_spec, evm_config },
+            state,
+            provider: shared_provider,
+            parlia,
+        }
     }
 
     #[inline]
@@ -321,7 +327,8 @@ where
     ) -> Result<BscExecuteOutput, BlockExecutionError> {
         // 1. get parent header and snapshot
         let parent = &(self.get_header_by_hash(block.parent_hash)?);
-        let snap = &(self.snapshot(parent, None)?);
+        let snapshot_reader = SnapshotReader::new(self.provider.clone(), self.parlia.clone());
+        let snap = &(snapshot_reader.snapshot(parent, None)?);
 
         // 2. prepare state on new block
         self.on_new_block(&block.header, parent, snap)?;
@@ -360,115 +367,6 @@ where
         } else {
             Ok(BscExecuteOutput { receipts, gas_used, snapshot: None })
         }
-    }
-
-    pub(crate) fn find_ancient_header(
-        &self,
-        header: &Header,
-        count: u64,
-    ) -> Result<Header, BlockExecutionError> {
-        let mut result = header.clone();
-        for _ in 0..count {
-            result = self.get_header_by_hash(result.parent_hash)?;
-        }
-        Ok(result)
-    }
-
-    pub(crate) fn snapshot(
-        &self,
-        header: &Header,
-        parent: Option<&Header>,
-    ) -> Result<Snapshot, BlockExecutionError> {
-        let mut cache = RECENT_SNAPS.write();
-
-        let mut header = header.clone();
-        let mut block_number = header.number;
-        let mut block_hash = header.hash_slow();
-        let mut skip_headers = Vec::new();
-
-        let snap: Option<Snapshot>;
-        loop {
-            // Read from cache
-            if let Some(cached) = cache.get(&block_hash) {
-                snap = Some(cached.clone());
-                break;
-            }
-
-            // Read from db
-            if block_number % CHECKPOINT_INTERVAL == 0 {
-                if let Some(cached) =
-                    self.provider.get_parlia_snapshot(block_hash).map_err(|err| {
-                        BscBlockExecutionError::ProviderInnerError { error: err.into() }
-                    })?
-                {
-                    snap = Some(cached);
-                    break;
-                }
-            }
-
-            // If we're at the genesis, snapshot the initial state.
-            if block_number == 0 {
-                let ValidatorsInfo { consensus_addrs, vote_addrs } =
-                    self.parlia.parse_validators_from_header(&header).map_err(|err| {
-                        BscBlockExecutionError::ParliaConsensusInnerError { error: err.into() }
-                    })?;
-                snap = Some(Snapshot::new(
-                    consensus_addrs,
-                    block_number,
-                    block_hash,
-                    self.parlia.epoch(),
-                    vote_addrs,
-                ));
-                break;
-            }
-
-            // No snapshot for this header, gather the header and move backward
-            skip_headers.push(header.clone());
-            if let Some(parent) = parent {
-                block_number = parent.number;
-                block_hash = header.parent_hash;
-                header = parent.clone();
-            } else if let Ok(h) = self.get_header_by_hash(header.parent_hash) {
-                block_number = h.number;
-                block_hash = header.parent_hash;
-                header = h;
-            }
-        }
-
-        let mut snap = snap.ok_or_else(|| BscBlockExecutionError::SnapshotNotFound)?;
-
-        // apply skip headers
-        skip_headers.reverse();
-        for header in &skip_headers {
-            let ValidatorsInfo { consensus_addrs, vote_addrs } = if header.number > 0 &&
-                header.number % self.parlia.epoch() == (snap.validators.len() / 2) as u64
-            {
-                // change validator set
-                let checkpoint_header =
-                    self.find_ancient_header(header, (snap.validators.len() / 2) as u64)?;
-
-                self.parlia.parse_validators_from_header(&checkpoint_header).map_err(|err| {
-                    BscBlockExecutionError::ParliaConsensusInnerError { error: err.into() }
-                })?
-            } else {
-                ValidatorsInfo::default()
-            };
-
-            let validator = self.parlia.recover_proposer(header).map_err(|err| {
-                BscBlockExecutionError::ParliaConsensusInnerError { error: err.into() }
-            })?;
-            let attestation =
-                self.parlia.get_vote_attestation_from_header(header).map_err(|err| {
-                    BscBlockExecutionError::ParliaConsensusInnerError { error: err.into() }
-                })?;
-
-            snap = snap
-                .apply(validator, header, consensus_addrs, vote_addrs, attestation)
-                .ok_or_else(|| BscBlockExecutionError::ApplySnapshotFailed)?;
-        }
-
-        cache.put(snap.block_hash, snap.clone());
-        Ok(snap)
     }
 
     pub(crate) fn get_justified_header(
@@ -875,5 +773,141 @@ where
 
     fn size_hint(&self) -> Option<usize> {
         Some(self.executor.state.bundle_state.size_hint())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct SnapshotReader<P> {
+    /// Extra provider for bsc
+    provider: Arc<P>,
+    /// Parlia consensus instance
+    parlia: Arc<Parlia>,
+}
+
+impl<P> SnapshotReader<P>
+where
+    P: ParliaProvider,
+{
+    pub fn new(provider: Arc<P>, parlia: Arc<Parlia>) -> Self {
+        Self { provider, parlia }
+    }
+
+    pub fn snapshot(
+        &self,
+        header: &Header,
+        parent: Option<&Header>,
+    ) -> Result<Snapshot, BlockExecutionError> {
+        let mut cache = RECENT_SNAPS.write();
+
+        let mut header = header.clone();
+        let mut block_number = header.number;
+        let mut block_hash = header.hash_slow();
+        let mut skip_headers = Vec::new();
+
+        let snap: Option<Snapshot>;
+        loop {
+            // Read from cache
+            if let Some(cached) = cache.get(&block_hash) {
+                snap = Some(cached.clone());
+                break;
+            }
+
+            // Read from db
+            if block_number % CHECKPOINT_INTERVAL == 0 {
+                if let Some(cached) =
+                    self.provider.get_parlia_snapshot(block_hash).map_err(|err| {
+                        BscBlockExecutionError::ProviderInnerError { error: err.into() }
+                    })?
+                {
+                    snap = Some(cached);
+                    break;
+                }
+            }
+
+            // If we're at the genesis, snapshot the initial state.
+            if block_number == 0 {
+                let ValidatorsInfo { consensus_addrs, vote_addrs } =
+                    self.parlia.parse_validators_from_header(&header).map_err(|err| {
+                        BscBlockExecutionError::ParliaConsensusInnerError { error: err.into() }
+                    })?;
+                snap = Some(Snapshot::new(
+                    consensus_addrs,
+                    block_number,
+                    block_hash,
+                    self.parlia.epoch(),
+                    vote_addrs,
+                ));
+                break;
+            }
+
+            // No snapshot for this header, gather the header and move backward
+            skip_headers.push(header.clone());
+            if let Some(parent) = parent {
+                block_number = parent.number;
+                block_hash = header.parent_hash;
+                header = parent.clone();
+            } else if let Ok(h) = self.get_header_by_hash(header.parent_hash) {
+                block_number = h.number;
+                block_hash = header.parent_hash;
+                header = h;
+            }
+        }
+
+        let mut snap = snap.ok_or_else(|| BscBlockExecutionError::SnapshotNotFound)?;
+
+        // apply skip headers
+        skip_headers.reverse();
+        for header in &skip_headers {
+            let ValidatorsInfo { consensus_addrs, vote_addrs } = if header.number > 0 &&
+                header.number % self.parlia.epoch() == (snap.validators.len() / 2) as u64
+            {
+                // change validator set
+                let checkpoint_header =
+                    self.find_ancient_header(header, (snap.validators.len() / 2) as u64)?;
+
+                self.parlia.parse_validators_from_header(&checkpoint_header).map_err(|err| {
+                    BscBlockExecutionError::ParliaConsensusInnerError { error: err.into() }
+                })?
+            } else {
+                ValidatorsInfo::default()
+            };
+
+            let validator = self.parlia.recover_proposer(header).map_err(|err| {
+                BscBlockExecutionError::ParliaConsensusInnerError { error: err.into() }
+            })?;
+            let attestation =
+                self.parlia.get_vote_attestation_from_header(header).map_err(|err| {
+                    BscBlockExecutionError::ParliaConsensusInnerError { error: err.into() }
+                })?;
+
+            snap = snap
+                .apply(validator, header, consensus_addrs, vote_addrs, attestation)
+                .ok_or_else(|| BscBlockExecutionError::ApplySnapshotFailed)?;
+        }
+
+        cache.put(snap.block_hash, snap.clone());
+        Ok(snap)
+    }
+
+    pub(crate) fn get_header_by_hash(
+        &self,
+        block_hash: B256,
+    ) -> Result<Header, BlockExecutionError> {
+        self.provider
+            .header(&block_hash)
+            .map_err(|err| BscBlockExecutionError::ProviderInnerError { error: err.into() })?
+            .ok_or_else(|| BscBlockExecutionError::UnknownHeader { block_hash }.into())
+    }
+
+    pub(crate) fn find_ancient_header(
+        &self,
+        header: &Header,
+        count: u64,
+    ) -> Result<Header, BlockExecutionError> {
+        let mut result = header.clone();
+        for _ in 0..count {
+            result = self.get_header_by_hash(result.parent_hash)?;
+        }
+        Ok(result)
     }
 }

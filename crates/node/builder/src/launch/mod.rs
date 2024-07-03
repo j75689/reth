@@ -43,7 +43,6 @@ pub mod common;
 pub use common::LaunchContext;
 mod exex;
 pub use exex::ExExLauncher;
-
 /// A general purpose trait that launches a new node of any kind.
 ///
 /// Acts as a node factory.

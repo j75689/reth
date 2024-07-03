@@ -85,5 +85,5 @@ tempfile.workspace = true
 default = []
 test-utils = ["reth-db/test-utils"]
 bsc = [
-    "reth-bsc-tasks/bsc"
+    "reth-bsc-tasks/bsc",
 ]
