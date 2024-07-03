@@ -6,7 +6,7 @@ use reth_engine_primitives::EngineTypes;
 use reth_evm_bsc::SnapshotReader;
 use reth_network::message::EngineMessage;
 use reth_network_p2p::{headers::client::HeadersClient, priority::Priority};
-use reth_primitives::{Block, BlockBody, BlockHashOrNumber, SealedHeader, B256};
+use reth_primitives::{Block, BlockBody, BlockHashOrNumber, SealedHeader};
 use reth_provider::{BlockReaderIdExt, CanonChainTracker, ParliaProvider};
 use reth_rpc_types::engine::ForkchoiceState;
 use std::{
@@ -75,6 +75,10 @@ pub(crate) struct ParliaEngineTask<
     fork_choice_tx: UnboundedSender<ForkChoiceMessage>,
     /// The channel to receive fork choice messages
     fork_choice_rx: Arc<Mutex<UnboundedReceiver<ForkChoiceMessage>>>,
+    /// The channel to send chain tracker messages
+    chain_tracker_tx: UnboundedSender<ForkChoiceMessage>,
+    /// The channel to receive chain tracker messages
+    chain_tracker_rx: Arc<Mutex<UnboundedReceiver<ForkChoiceMessage>>>,
     /// The flag to indicate if the fork choice update is syncing
     syncing_fcu: Arc<AtomicBool>,
 }
@@ -100,6 +104,7 @@ impl<
         block_interval: u64,
     ) {
         let (fork_choice_tx, fork_choice_rx) = mpsc::unbounded_channel();
+        let (chain_tracker_tx, chain_tracker_rx) = mpsc::unbounded_channel();
         let this = Self {
             chain_spec,
             consensus,
@@ -112,11 +117,14 @@ impl<
             block_interval,
             fork_choice_tx,
             fork_choice_rx: Arc::new(Mutex::new(fork_choice_rx)),
+            chain_tracker_tx,
+            chain_tracker_rx: Arc::new(Mutex::new(chain_tracker_rx)),
             syncing_fcu: Arc::new(AtomicBool::new(false)),
         };
 
         this.start_block_event_listening();
         this.start_fork_choice_update_notifier();
+        this.start_chain_tracker_notifier();
     }
 
     /// Start listening to the network block event
@@ -286,11 +294,9 @@ impl<
     fn start_fork_choice_update_notifier(&self) {
         let fork_choice_rx = self.fork_choice_rx.clone();
         let to_engine = self.to_engine.clone();
-        let snapshot_reader = self.snapshot_reader.clone();
-        let provider = self.provider.clone();
+        let chain_tracker_tx = self.chain_tracker_tx.clone();
+        let storage = self.storage.clone();
         let syncing_fcu = self.syncing_fcu.clone();
-        let mut finalized_hash = B256::ZERO;
-        let mut safe_hash = B256::ZERO;
         tokio::spawn(async move {
             loop {
                 let mut fork_choice_rx_guard = fork_choice_rx.lock().await;
@@ -303,6 +309,10 @@ impl<
                             ForkChoiceMessage::NewHeader(event) => {
                                 // notify parlia engine
                                 let new_header = event.header;
+                                let storage = storage.read().await;
+                                let safe_hash = storage.best_safe_hash;
+                                let finalized_hash = storage.best_finalized_hash;
+                                drop(storage);
 
                                 let state = ForkchoiceState {
                                     head_block_hash: new_header.hash(),
@@ -361,7 +371,43 @@ impl<
                                     continue
                                 }
 
-                                // first notify chain tracker to help rpc module can know the finalized and safe hash
+                                let result = chain_tracker_tx.send(ForkChoiceMessage::NewHeader(NewHeaderEvent {
+                                    header: new_header.clone(),
+                                }));
+                                if result.is_err() {
+                                    error!(target: "consensus::parlia", "Failed to send new block event to chain tracker");
+                                }
+                            }
+                        }
+                    }
+                    _ = signal::ctrl_c() => {
+                        info!(target: "consensus::parlia", "fork choice notifier shutting down...");
+                        return
+                    },
+                }
+            }
+        });
+        info!(target: "consensus::parlia", "started fork choice notifier")
+    }
+
+    fn start_chain_tracker_notifier(&self) {
+        let chain_tracker_rx = self.chain_tracker_rx.clone();
+        let snapshot_reader = self.snapshot_reader.clone();
+        let provider = self.provider.clone();
+        let storage = self.storage.clone();
+
+        tokio::spawn(async move {
+            loop {
+                let mut fork_choice_rx_guard = chain_tracker_rx.lock().await;
+                tokio::select! {
+                    msg = fork_choice_rx_guard.recv() => {
+                        if msg.is_none() {
+                            continue;
+                        }
+                        match msg.unwrap() {
+                            ForkChoiceMessage::NewHeader(event) => {
+                                let new_header = event.header;
+
                                 let snap = match snapshot_reader.snapshot(&new_header, None) {
                                     Ok(snap) => snap,
                                     Err(err) => {
@@ -369,9 +415,14 @@ impl<
                                         continue
                                     }
                                 };
-                                finalized_hash = snap.vote_data.source_hash;
-                                safe_hash = snap.vote_data.target_hash;
+                                // safe finalized and safe hash for next round fcu
+                                let finalized_hash = snap.vote_data.source_hash;
+                                let safe_hash = snap.vote_data.target_hash;
+                                let mut storage = storage.write().await;
+                                storage.insert_finalized_and_safe_hash(finalized_hash, safe_hash);
+                                drop(storage);
 
+                                // notify chain tracker to help rpc module can know the finalized and safe hash
                                 match provider.sealed_header(snap.vote_data.source_number) {
                                     Ok(header) => {
                                         if let Some(sealed_header) = header {
@@ -394,16 +445,18 @@ impl<
                                     }
                                 }
                             }
+
                         }
                     }
                     _ = signal::ctrl_c() => {
-                        info!(target: "consensus::parlia", "fork choice notifier shutting down...");
+                        info!(target: "consensus::parlia", "chain tracker notifier shutting down...");
                         return
                     },
                 }
             }
         });
-        info!(target: "consensus::parlia", "started fork choice notifier")
+
+        info!(target: "consensus::parlia", "started chain tracker notifier")
     }
 }
 
