@@ -46,7 +46,6 @@ pub mod common;
 pub use common::LaunchContext;
 mod exex;
 pub use exex::ExExLauncher;
-
 /// A general purpose trait that launches a new node of any kind.
 ///
 /// Acts as a node factory.
@@ -276,6 +275,7 @@ where
                 let client = ParliaEngineBuilder::new(
                     ctx.chain_spec(),
                     ParliaConfig::default(),
+                    blockchain_db.clone(),
                     blockchain_db.clone(),
                     consensus_engine_tx.clone(),
                     engine_rx,
