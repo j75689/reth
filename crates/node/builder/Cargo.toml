@@ -48,6 +48,7 @@ reth-rpc-types.workspace = true
 reth-engine-util.workspace = true
 reth-cli-util.workspace = true
 reth-bsc-consensus = { workspace = true, optional = true}
+reth-bsc-tasks = { workspace = true, optional = true}
 
 ## async
 futures.workspace = true
@@ -84,5 +85,5 @@ tempfile.workspace = true
 default = []
 test-utils = ["reth-db/test-utils"]
 bsc = [
-    "reth-bsc-consensus"
+    "reth-bsc-tasks/bsc"
 ]

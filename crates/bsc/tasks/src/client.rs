@@ -1,4 +1,4 @@
-//! This includes download client implementations for auto sealing miners.
+//! This includes download client implementations for parlia consensus.
 use crate::Storage;
 use reth_network::FetchClient;
 use reth_network_p2p::{
