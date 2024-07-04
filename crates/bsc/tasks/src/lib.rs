@@ -253,6 +253,8 @@ where
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     #[test]
     fn test_inner_storage() {
         let default_block = Header::default().seal_slow();
