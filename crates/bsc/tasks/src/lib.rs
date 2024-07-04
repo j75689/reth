@@ -254,6 +254,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use reth_primitives::Header;
 
     #[test]
     fn test_inner_storage() {
@@ -265,6 +266,8 @@ mod tests {
             headers: LimitedHashSet::new(10),
             hash_to_number: LimitedHashSet::new(10),
             bodies: LimitedHashSet::new(10),
+            best_finalized_hash: B256::default(),
+            best_safe_hash: B256::default(),
         };
         storage.headers.put(default_block.number, default_block.clone());
         storage.hash_to_number.put(default_block.hash(), default_block.number);
