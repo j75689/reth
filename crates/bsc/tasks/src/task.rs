@@ -430,7 +430,7 @@ impl<
                                         }
                                     }
                                     Err(err) => {
-                                        error!(target: "consensus::parlia", %err, "Falied to get source header");
+                                        error!(target: "consensus::parlia", %err, "Failed to get source header");
                                     }
                                 }
 
@@ -441,7 +441,7 @@ impl<
                                         }
                                     }
                                     Err(err) => {
-                                        error!(target: "consensus::parlia", %err, "Falied to get target header");
+                                        error!(target: "consensus::parlia", %err, "Failed to get target header");
                                     }
                                 }
                             }
