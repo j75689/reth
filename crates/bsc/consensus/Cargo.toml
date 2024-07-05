@@ -24,7 +24,6 @@ reth-network.workspace = true
 reth-engine-primitives.workspace = true
 reth-network-p2p.workspace = true
 reth-network-peers.workspace = true
-reth-beacon-consensus.workspace = true
 
 # eth
 alloy-rlp.workspace = true
