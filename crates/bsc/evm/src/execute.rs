@@ -188,13 +188,13 @@ where
                 .into());
             }
 
-            self.patch_mainnet(&block.header, transaction, evm.db_mut());
-            self.patch_chapel(&block.header, transaction, evm.db_mut());
+            self.patch_mainnet_before_tx(&block.header, transaction, evm.db_mut());
+            self.patch_chapel_before_tx(&block.header, transaction, evm.db_mut());
 
             EvmConfig::fill_tx_env(evm.tx_mut(), transaction, *sender);
 
             // Execute transaction.
-            let ResultAndState { result, state } = evm.transact().map_err(move |err| {
+            let ResultAndState { result, mut state } = evm.transact().map_err(move |err| {
                 // Ensure hash is calculated for error log, if not already done
                 BlockValidationError::EVM {
                     hash: transaction.recalculate_hash(),
