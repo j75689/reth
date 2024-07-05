@@ -30,6 +30,7 @@ reth-static-file.workspace = true
 reth-tokio-util.workspace = true
 reth-engine-primitives.workspace = true
 reth-network-p2p.workspace = true
+reth-bsc-consensus = { workspace = true, optional = true}
 
 
 # async
@@ -79,4 +80,8 @@ optimism = [
     "reth-provider/optimism",
     "reth-blockchain-tree/optimism",
     "reth-rpc/optimism",
+]
+
+bsc = [
+    "reth-bsc-consensus/bsc"
 ]
