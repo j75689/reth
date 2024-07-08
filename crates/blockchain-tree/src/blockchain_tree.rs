@@ -403,7 +403,8 @@ where
             .provider_factory
             .chain_spec()
             .fork(EthereumHardfork::Paris)
-            .active_at_ttd(parent_td, U256::ZERO)
+            .active_at_ttd(parent_td, U256::ZERO) &&
+            !self.externals.provider_factory.chain_spec().is_bsc()
         {
             return Err(BlockExecutionError::Validation(BlockValidationError::BlockPreMerge {
                 hash: block.hash(),
@@ -1044,7 +1045,8 @@ where
                 .provider_factory
                 .chain_spec()
                 .fork(EthereumHardfork::Paris)
-                .active_at_ttd(td, U256::ZERO)
+                .active_at_ttd(td, U256::ZERO) &&
+                !self.externals.provider_factory.chain_spec().is_bsc()
             {
                 return Err(CanonicalError::from(BlockValidationError::BlockPreMerge {
                     hash: block_hash,
