@@ -251,7 +251,6 @@ impl Command {
 
         #[cfg(feature = "optimism")]
         let payload_builder = reth_node_optimism::OptimismPayloadBuilder::new(
-            provider_factory.chain_spec(),
             reth_node_optimism::OptimismEvmConfig::default(),
         )
         .compute_pending_block();
