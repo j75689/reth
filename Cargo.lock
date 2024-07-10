@@ -8373,6 +8373,7 @@ dependencies = [
 name = "reth-fs-util"
 version = "1.0.1"
 dependencies = [
+ "serde",
  "serde_json",
  "thiserror",
 ]
