@@ -1,16 +1,14 @@
 use crate::utils::DbTool;
 use clap::Parser;
 use reth_db::{
-    static_file::{
-        ColumnSelectorOne, ColumnSelectorTwo, HeaderMask, ReceiptMask, SidecarMask, TransactionMask,
-    },
-    tables, RawKey, RawTable, Receipts, Sidecars, TableViewer, Transactions,
+    static_file::{ColumnSelectorOne, ColumnSelectorTwo, HeaderMask, ReceiptMask, TransactionMask},
+    tables, RawKey, RawTable, Receipts, TableViewer, Transactions,
 };
 use reth_db_api::{
     database::Database,
     table::{Decompress, DupSort, Table},
 };
-use reth_primitives::{BlobSidecars, BlockHash, Header, StaticFileSegment};
+use reth_primitives::{BlockHash, Header, StaticFileSegment};
 use reth_provider::StaticFileProviderFactory;
 use tracing::error;
 
@@ -73,10 +71,6 @@ impl Command {
                         table_key::<tables::Receipts>(&key)?,
                         <ReceiptMask<<Receipts as Table>::Value>>::MASK,
                     ),
-                    StaticFileSegment::Sidecars => (
-                        table_key::<tables::Sidecars>(&key)?,
-                        <SidecarMask<BlobSidecars, BlockHash>>::MASK,
-                    ),
                 };
 
                 let content = tool.provider_factory.static_file_provider().find_static_file(
@@ -117,12 +111,6 @@ impl Command {
                                         content[0].as_slice(),
                                     )?;
                                     println!("{}", serde_json::to_string_pretty(&receipt)?);
-                                }
-                                StaticFileSegment::Sidecars => {
-                                    let sc = <<Sidecars as Table>::Value>::decompress(
-                                        content[0].as_slice(),
-                                    )?;
-                                    println!("{}", serde_json::to_string_pretty(&sc)?);
                                 }
                             }
                         }

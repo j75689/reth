@@ -14,14 +14,13 @@ use reth_db_api::{database::Database, models::StoredBlockBodyIndices};
 use reth_errors::{RethError, RethResult};
 use reth_evm::ConfigureEvmEnv;
 use reth_primitives::{
-    parlia::Snapshot, Address, BlobSidecars, Block, BlockHash, BlockHashOrNumber, BlockNumber,
-    BlockWithSenders, Header, Receipt, SealedBlock, SealedBlockWithSenders, SealedHeader,
-    StaticFileSegment, TransactionMeta, TransactionSigned, TransactionSignedNoHash, TxHash,
-    TxNumber, Withdrawal, Withdrawals, B256, U256,
+    parlia::Snapshot, Address, Block, BlockHash, BlockHashOrNumber, BlockNumber, BlockWithSenders,
+    Header, Receipt, SealedBlock, SealedBlockWithSenders, SealedHeader, StaticFileSegment,
+    TransactionMeta, TransactionSigned, TransactionSignedNoHash, TxHash, TxNumber, Withdrawal,
+    Withdrawals, B256, U256,
 };
 use reth_prune_types::{PruneCheckpoint, PruneSegment};
 use reth_stages_types::{StageCheckpoint, StageId};
-use reth_storage_api::SidecarsProvider;
 use reth_storage_errors::provider::ProviderResult;
 use revm::primitives::{BlockEnv, CfgEnvWithHandlerCfg};
 use std::{
@@ -468,24 +467,6 @@ impl<DB: Database> WithdrawalsProvider for ProviderFactory<DB> {
 
     fn latest_withdrawal(&self) -> ProviderResult<Option<Withdrawal>> {
         self.provider()?.latest_withdrawal()
-    }
-}
-
-impl<DB> SidecarsProvider for ProviderFactory<DB>
-where
-    DB: Database,
-{
-    fn sidecars(&self, block_hash: &BlockHash) -> ProviderResult<Option<BlobSidecars>> {
-        self.provider()?.sidecars(block_hash)
-    }
-
-    fn sidecars_by_number(&self, num: BlockNumber) -> ProviderResult<Option<BlobSidecars>> {
-        self.static_file_provider.get_with_static_file_or_database(
-            StaticFileSegment::Sidecars,
-            num,
-            |static_file| static_file.sidecars_by_number(num),
-            || self.provider()?.sidecars_by_number(num),
-        )
     }
 }
 

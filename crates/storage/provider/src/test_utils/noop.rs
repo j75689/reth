@@ -10,14 +10,13 @@ use reth_chainspec::{ChainInfo, ChainSpec, MAINNET};
 use reth_db_api::models::{AccountBeforeTx, StoredBlockBodyIndices};
 use reth_evm::ConfigureEvmEnv;
 use reth_primitives::{
-    parlia::Snapshot, Account, Address, BlobSidecars, Block, BlockHash, BlockHashOrNumber, BlockId,
-    BlockNumber, BlockWithSenders, Bytecode, Header, Receipt, SealedBlock, SealedBlockWithSenders,
-    SealedHeader, StorageKey, StorageValue, TransactionMeta, TransactionSigned,
-    TransactionSignedNoHash, TxHash, TxNumber, Withdrawal, Withdrawals, B256, U256,
+    parlia::Snapshot, Account, Address, Block, BlockHash, BlockHashOrNumber, BlockId, BlockNumber,
+    BlockWithSenders, Bytecode, Header, Receipt, SealedBlock, SealedBlockWithSenders, SealedHeader,
+    StorageKey, StorageValue, TransactionMeta, TransactionSigned, TransactionSignedNoHash, TxHash,
+    TxNumber, Withdrawal, Withdrawals, B256, U256,
 };
 use reth_prune_types::{PruneCheckpoint, PruneSegment};
 use reth_stages_types::{StageCheckpoint, StageId};
-use reth_storage_api::SidecarsProvider;
 use reth_storage_errors::provider::ProviderResult;
 use reth_trie::{updates::TrieUpdates, AccountProof};
 use revm::{
@@ -452,16 +451,6 @@ impl WithdrawalsProvider for NoopProvider {
         Ok(None)
     }
     fn latest_withdrawal(&self) -> ProviderResult<Option<Withdrawal>> {
-        Ok(None)
-    }
-}
-
-impl SidecarsProvider for NoopProvider {
-    fn sidecars(&self, _block_hash: &BlockHash) -> ProviderResult<Option<BlobSidecars>> {
-        Ok(None)
-    }
-
-    fn sidecars_by_number(&self, _num: BlockNumber) -> ProviderResult<Option<BlobSidecars>> {
         Ok(None)
     }
 }

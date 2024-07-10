@@ -9,8 +9,8 @@ use reth_db_api::models::CompactU256;
 use reth_nippy_jar::{ConsistencyFailStrategy, NippyJar, NippyJarError, NippyJarWriter};
 use reth_primitives::{
     static_file::{find_fixed_range, SegmentHeader, SegmentRangeInclusive},
-    BlobSidecars, BlockHash, BlockNumber, Header, Receipt, StaticFileSegment,
-    TransactionSignedNoHash, TxNumber, U256,
+    BlockHash, BlockNumber, Header, Receipt, StaticFileSegment, TransactionSignedNoHash, TxNumber,
+    U256,
 };
 use reth_storage_errors::provider::{ProviderError, ProviderResult};
 use std::{
@@ -145,9 +145,7 @@ impl StaticFileProviderRW {
         })?;
 
         // If we have lost rows (in this run or previous), we need to update the [SegmentHeader].
-        let expected_rows = if self.user_header().segment().is_headers() ||
-            self.user_header().segment().is_sidecars()
-        {
+        let expected_rows = if self.user_header().segment().is_headers() {
             self.user_header().block_len().unwrap_or_default()
         } else {
             self.user_header().tx_len().unwrap_or_default()
@@ -180,7 +178,6 @@ impl StaticFileProviderRW {
                 StaticFileSegment::Receipts => {
                     self.prune_receipt_data(to_delete, last_block_number.expect("should exist"))?
                 }
-                StaticFileSegment::Sidecars => self.prune_sidecars_data(to_delete)?,
             }
         }
 
@@ -351,7 +348,7 @@ impl StaticFileProviderRW {
         let mut remaining_rows = num_rows;
         while remaining_rows > 0 {
             let len = match segment {
-                StaticFileSegment::Headers | StaticFileSegment::Sidecars => {
+                StaticFileSegment::Headers => {
                     self.writer.user_header().block_len().unwrap_or_default()
                 }
                 StaticFileSegment::Transactions | StaticFileSegment::Receipts => {
@@ -496,39 +493,6 @@ impl StaticFileProviderRW {
         Ok(block_number)
     }
 
-    /// Appends sidecars to static file.
-    ///
-    /// It **CALLS** `increment_block()` since the number of sidecars is equal to the number of
-    /// blocks.
-    ///
-    /// Returns the current [`BlockNumber`] as seen in the static file.
-    pub fn append_sidecars(
-        &mut self,
-        sidecars: BlobSidecars,
-        block_number: BlockNumber,
-        hash: BlockHash,
-    ) -> ProviderResult<BlockNumber> {
-        let start = Instant::now();
-        self.ensure_no_queued_prune()?;
-
-        debug_assert!(self.writer.user_header().segment() == StaticFileSegment::Sidecars);
-
-        let block_number = self.increment_block(StaticFileSegment::Sidecars, block_number)?;
-
-        self.append_column(sidecars)?;
-        self.append_column(hash)?;
-
-        if let Some(metrics) = &self.metrics {
-            metrics.record_segment_operation(
-                StaticFileSegment::Sidecars,
-                StaticFileProviderOperation::Append,
-                Some(start.elapsed()),
-            );
-        }
-
-        Ok(block_number)
-    }
-
     /// Appends transaction to static file.
     ///
     /// It **DOES NOT CALL** `increment_block()`, it should be handled elsewhere. There might be
@@ -651,12 +615,6 @@ impl StaticFileProviderRW {
         self.queue_prune(to_delete, None)
     }
 
-    /// Adds an instruction to prune `to_delete` sidecars during commit.
-    pub fn prune_sidecars(&mut self, to_delete: u64) -> ProviderResult<()> {
-        debug_assert_eq!(self.writer.user_header().segment(), StaticFileSegment::Sidecars);
-        self.queue_prune(to_delete, None)
-    }
-
     /// Adds an instruction to prune `to_delete` elements during commit.
     ///
     /// Note: `last_block` refers to the block the unwinds ends at if dealing with transaction-based
@@ -741,26 +699,6 @@ impl StaticFileProviderRW {
         if let Some(metrics) = &self.metrics {
             metrics.record_segment_operation(
                 StaticFileSegment::Headers,
-                StaticFileProviderOperation::Prune,
-                Some(start.elapsed()),
-            );
-        }
-
-        Ok(())
-    }
-
-    /// Prunes the last `to_delete` sidecars from the data file.
-    fn prune_sidecars_data(&mut self, to_delete: u64) -> ProviderResult<()> {
-        let start = Instant::now();
-
-        let segment = StaticFileSegment::Sidecars;
-        debug_assert!(self.writer.user_header().segment() == segment);
-
-        self.truncate(segment, to_delete, None)?;
-
-        if let Some(metrics) = &self.metrics {
-            metrics.record_segment_operation(
-                StaticFileSegment::Sidecars,
                 StaticFileProviderOperation::Prune,
                 Some(start.elapsed()),
             );

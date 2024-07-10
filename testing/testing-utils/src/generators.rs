@@ -164,7 +164,6 @@ pub fn random_block<R: Rng>(
         body: transactions,
         ommers,
         withdrawals: None,
-        sidecars: None,
         requests: None,
     }
 }

@@ -512,14 +512,13 @@ mod tests {
                 accounts.iter().map(|(addr, acc)| (*addr, (*acc, std::iter::empty()))),
             )?;
 
-            let SealedBlock { header, body, ommers, withdrawals, sidecars, requests } =
-                random_block(
-                    &mut rng,
-                    stage_progress,
-                    preblocks.last().map(|b| b.hash()),
-                    Some(0),
-                    None,
-                );
+            let SealedBlock { header, body, ommers, withdrawals, requests } = random_block(
+                &mut rng,
+                stage_progress,
+                preblocks.last().map(|b| b.hash()),
+                Some(0),
+                None,
+            );
             let mut header = header.unseal();
 
             header.state_root = state_root(
@@ -528,14 +527,8 @@ mod tests {
                     .into_iter()
                     .map(|(address, account)| (address, (account, std::iter::empty()))),
             );
-            let sealed_head = SealedBlock {
-                header: header.seal_slow(),
-                body,
-                ommers,
-                withdrawals,
-                sidecars,
-                requests,
-            };
+            let sealed_head =
+                SealedBlock { header: header.seal_slow(), body, ommers, withdrawals, requests };
 
             let head_hash = sealed_head.hash();
             let mut blocks = vec![sealed_head];

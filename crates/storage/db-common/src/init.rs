@@ -285,10 +285,6 @@ pub fn insert_genesis_header<DB: Database>(
             let (difficulty, hash) = (header.difficulty, block_hash);
             let mut writer = static_file_provider.latest_writer(StaticFileSegment::Headers)?;
             writer.append_header(header, difficulty, hash)?;
-
-            // skip the zero block index
-            let mut writer = static_file_provider.latest_writer(StaticFileSegment::Sidecars)?;
-            writer.append_sidecars(Default::default(), 0, B256::ZERO)?;
         }
         Ok(Some(_)) => {}
         Err(e) => return Err(e),

@@ -19,8 +19,8 @@ use reth_db_api::{
 };
 use reth_evm::ConfigureEvmEnv;
 use reth_primitives::{
-    parlia::Snapshot, Account, Address, BlobSidecars, Block, BlockHash, BlockHashOrNumber, BlockId,
-    BlockNumHash, BlockNumber, BlockNumberOrTag, BlockWithSenders, Header, Receipt, SealedBlock,
+    parlia::Snapshot, Account, Address, Block, BlockHash, BlockHashOrNumber, BlockId, BlockNumHash,
+    BlockNumber, BlockNumberOrTag, BlockWithSenders, Header, Receipt, SealedBlock,
     SealedBlockWithSenders, SealedHeader, TransactionMeta, TransactionSigned,
     TransactionSignedNoHash, TxHash, TxNumber, Withdrawal, Withdrawals, B256, U256,
 };
@@ -60,7 +60,6 @@ use chain_info::ChainInfoTracker;
 mod consistent_view;
 use alloy_rpc_types_engine::ForkchoiceState;
 pub use consistent_view::{ConsistentDbView, ConsistentViewError};
-use reth_storage_api::SidecarsProvider;
 
 /// The main type for interacting with the blockchain.
 ///
@@ -480,19 +479,6 @@ where
 
     fn latest_withdrawal(&self) -> ProviderResult<Option<Withdrawal>> {
         self.database.latest_withdrawal()
-    }
-}
-
-impl<DB> SidecarsProvider for BlockchainProvider<DB>
-where
-    DB: Database,
-{
-    fn sidecars(&self, block_hash: &BlockHash) -> ProviderResult<Option<BlobSidecars>> {
-        self.database.sidecars(block_hash)
-    }
-
-    fn sidecars_by_number(&self, num: BlockNumber) -> ProviderResult<Option<BlobSidecars>> {
-        self.database.sidecars_by_number(num)
     }
 }
 

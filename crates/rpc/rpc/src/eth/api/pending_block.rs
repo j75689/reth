@@ -289,12 +289,8 @@ impl PendingBlockEnv {
             requests_root,
         };
 
-        // sidecars should be queried by `eth_getBlobSidecars`
-        let sidecars = None;
-
         // seal the block
-        let block =
-            Block { header, body: executed_txs, ommers: vec![], withdrawals, sidecars, requests };
+        let block = Block { header, body: executed_txs, ommers: vec![], withdrawals, requests };
         Ok(SealedBlockWithSenders { block: block.seal_slow(), senders })
     }
 }

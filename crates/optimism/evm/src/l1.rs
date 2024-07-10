@@ -285,7 +285,6 @@ mod tests {
             body: vec![l1_info_tx],
             ommers: Vec::default(),
             withdrawals: None,
-            sidecars: None,
             requests: None,
         };
 
@@ -308,7 +307,6 @@ mod tests {
             body: vec![l1_info_tx],
             ommers: Vec::default(),
             withdrawals: None,
-            sidecars: None,
             requests: None,
         };
 

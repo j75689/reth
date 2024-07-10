@@ -120,7 +120,6 @@ where
         body: block.transactions,
         ommers: block.ommers,
         withdrawals: block.withdrawals,
-        sidecars: block.sidecars,
         requests: block.requests,
     };
 

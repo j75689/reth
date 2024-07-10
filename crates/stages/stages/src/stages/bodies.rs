@@ -128,7 +128,7 @@ impl<DB: Database, D: BodyDownloader> Stage<DB> for BodyStage<D> {
         let mut next_tx_num = tx_block_cursor.last()?.map(|(id, _)| id + 1).unwrap_or_default();
 
         let static_file_provider = provider.static_file_provider();
-        let mut static_file_producer_tx =
+        let mut static_file_producer =
             static_file_provider.get_writer(from_block, StaticFileSegment::Transactions)?;
 
         // Make sure Transactions static file is at the same height. If it's further, this
@@ -143,11 +143,11 @@ impl<DB: Database, D: BodyDownloader> Stage<DB> for BodyStage<D> {
             // stage run. So, our only solution is to unwind the static files and proceed from the
             // database expected height.
             Ordering::Greater => {
-                static_file_producer_tx
+                static_file_producer
                     .prune_transactions(next_static_file_tx_num - next_tx_num, from_block - 1)?;
                 // Since this is a database <-> static file inconsistency, we commit the change
                 // straight away.
-                static_file_producer_tx.commit()?;
+                static_file_producer.commit()?;
             }
             // If static files are behind, then there was some corruption or loss of files. This
             // error will trigger an unwind, that will bring the database to the same height as the
@@ -157,38 +157,6 @@ impl<DB: Database, D: BodyDownloader> Stage<DB> for BodyStage<D> {
                     next_static_file_tx_num.saturating_sub(1),
                     static_file_provider,
                     provider,
-                    StaticFileSegment::Transactions,
-                )?)
-            }
-            Ordering::Equal => {}
-        }
-
-        let mut static_file_producer_sc =
-            static_file_provider.get_writer(from_block, StaticFileSegment::Sidecars)?;
-
-        // Make sure Sidecars static file is at the same height. If it's further, this
-        // input execution was interrupted previously and we need to unwind the static file.
-        let next_static_file_block_num = static_file_provider
-            .get_highest_static_file_block(StaticFileSegment::Sidecars)
-            .map(|id| id + 1)
-            .unwrap_or_default();
-
-        match next_static_file_block_num.cmp(&from_block) {
-            Ordering::Greater => {
-                static_file_producer_sc.prune_sidecars(next_static_file_block_num - from_block)?;
-                // Since this is a database <-> static file inconsistency, we commit the change
-                // straight away.
-                static_file_producer_sc.commit()?
-            }
-            // If static files are behind, then there was some corruption or loss of files. This
-            // error will trigger an unwind, that will bring the database to the same height as the
-            // static files.
-            Ordering::Less => {
-                return Err(missing_static_data_error(
-                    next_static_file_tx_num.saturating_sub(1),
-                    static_file_provider,
-                    provider,
-                    StaticFileSegment::Sidecars,
                 )?)
             }
             Ordering::Equal => {}
@@ -213,7 +181,7 @@ impl<DB: Database, D: BodyDownloader> Stage<DB> for BodyStage<D> {
 
             // Increment block on static file header.
             if block_number > 0 {
-                let appended_block_number = static_file_producer_tx
+                let appended_block_number = static_file_producer
                     .increment_block(StaticFileSegment::Transactions, block_number)?;
 
                 if appended_block_number != block_number {
@@ -236,7 +204,7 @@ impl<DB: Database, D: BodyDownloader> Stage<DB> for BodyStage<D> {
 
                     // Write transactions
                     for transaction in block.body {
-                        let appended_tx_number = static_file_producer_tx
+                        let appended_tx_number = static_file_producer
                             .append_transaction(next_tx_num, transaction.into())?;
 
                         if appended_tx_number != next_tx_num {
@@ -252,14 +220,6 @@ impl<DB: Database, D: BodyDownloader> Stage<DB> for BodyStage<D> {
                         // Increment transaction id for each transaction.
                         next_tx_num += 1;
                     }
-
-                    // Write sidecars
-                    let sidecars = block.sidecars.unwrap_or_default();
-                    static_file_producer_sc.append_sidecars(
-                        sidecars,
-                        block_number,
-                        block.header.hash(),
-                    )?;
 
                     // Write ommers if any
                     if !block.ommers.is_empty() {
@@ -282,14 +242,7 @@ impl<DB: Database, D: BodyDownloader> Stage<DB> for BodyStage<D> {
                         }
                     }
                 }
-                BlockResponse::Empty(header) => {
-                    // Write empty sidecars
-                    static_file_producer_sc.append_sidecars(
-                        Default::default(),
-                        block_number,
-                        header.hash(),
-                    )?;
-                }
+                BlockResponse::Empty(_) => {}
             };
 
             // insert block meta
@@ -359,7 +312,7 @@ impl<DB: Database, D: BodyDownloader> Stage<DB> for BodyStage<D> {
             rev_walker.delete_current()?;
         }
 
-        let mut static_file_producer_tx =
+        let mut static_file_producer =
             static_file_provider.latest_writer(StaticFileSegment::Transactions)?;
 
         // Unwind from static files. Get the current last expected transaction from DB, and match it
@@ -377,38 +330,12 @@ impl<DB: Database, D: BodyDownloader> Stage<DB> for BodyStage<D> {
                 static_file_tx_num,
                 static_file_provider,
                 provider,
-                StaticFileSegment::Transactions,
             )?)
         }
 
         // Unwinds static file
-        static_file_producer_tx
+        static_file_producer
             .prune_transactions(static_file_tx_num.saturating_sub(db_tx_num), input.unwind_to)?;
-
-        let mut static_file_producer_sc =
-            static_file_provider.latest_writer(StaticFileSegment::Sidecars)?;
-
-        // Unwind from static files. Get the current last expected block from DB, and match it
-        // on static file
-        let db_block_num = body_cursor.last()?.map(|(block_num, _)| block_num).unwrap_or_default();
-        let static_file_block_num: u64 = static_file_provider
-            .get_highest_static_file_block(StaticFileSegment::Sidecars)
-            .unwrap_or_default();
-
-        // If there are more blocks on database, then we are missing static file data and we
-        // need to unwind further.
-        if db_block_num > static_file_block_num {
-            return Err(missing_static_data_error(
-                static_file_block_num,
-                static_file_provider,
-                provider,
-                StaticFileSegment::Sidecars,
-            )?)
-        }
-
-        // Unwinds static file
-        static_file_producer_sc
-            .prune_sidecars(static_file_block_num.saturating_sub(db_block_num))?;
 
         Ok(UnwindOutput {
             checkpoint: StageCheckpoint::new(input.unwind_to)
@@ -421,7 +348,6 @@ fn missing_static_data_error<DB: Database>(
     last_tx_num: TxNumber,
     static_file_provider: &StaticFileProvider,
     provider: &DatabaseProviderRW<DB>,
-    segment: StaticFileSegment,
 ) -> Result<StageError, ProviderError> {
     let mut last_block = static_file_provider
         .get_highest_static_file_block(StaticFileSegment::Transactions)
@@ -443,7 +369,10 @@ fn missing_static_data_error<DB: Database>(
 
     let missing_block = Box::new(provider.sealed_header(last_block + 1)?.unwrap_or_default());
 
-    Ok(StageError::MissingStaticFileData { block: missing_block, segment })
+    Ok(StageError::MissingStaticFileData {
+        block: missing_block,
+        segment: StaticFileSegment::Transactions,
+    })
 }
 
 // TODO(alexey): ideally, we want to measure Bodies stage progress in bytes, but it's hard to know
@@ -735,7 +664,7 @@ mod tests {
                     transactions: block.body.clone(),
                     ommers: block.ommers.clone(),
                     withdrawals: block.withdrawals.clone(),
-                    sidecars: block.sidecars.clone(),
+                    sidecars: None,
                     requests: block.requests.clone(),
                 },
             )
@@ -798,33 +727,22 @@ mod tests {
                     // Insert last progress data
                     {
                         let tx = self.db.factory.provider_rw()?.into_tx();
-                        let mut static_file_producer_tx = static_file_provider
+                        let mut static_file_producer = static_file_provider
                             .get_writer(start, StaticFileSegment::Transactions)?;
-                        let mut static_file_producer_sc =
-                            static_file_provider.get_writer(start, StaticFileSegment::Sidecars)?;
 
                         let body = StoredBlockBodyIndices {
                             first_tx_num: 0,
                             tx_count: progress.body.len() as u64,
                         };
 
-                        static_file_producer_tx.set_block_range(0..=progress.number);
+                        static_file_producer.set_block_range(0..=progress.number);
 
                         body.tx_num_range().try_for_each(|tx_num| {
                             let transaction = random_signed_tx(&mut rng);
-                            static_file_producer_tx
+                            static_file_producer
                                 .append_transaction(tx_num, transaction.into())
                                 .map(|_| ())
                         })?;
-
-                        for block_number in 0..=progress.number {
-                            static_file_producer_sc.append_sidecars(
-                                Default::default(),
-                                block_number,
-                                blocks.get(block_number as usize).map(|b| b.header.hash()).unwrap(),
-                            )?;
-                            tx.put::<tables::Sidecars>(block_number, Default::default())?;
-                        }
 
                         if body.tx_count != 0 {
                             tx.put::<tables::TransactionBlocks>(
@@ -842,8 +760,7 @@ mod tests {
                             )?;
                         }
 
-                        static_file_producer_tx.commit()?;
-                        static_file_producer_sc.commit()?;
+                        static_file_producer.commit()?;
                         tx.commit()?;
                     }
                 }
@@ -1027,7 +944,6 @@ mod tests {
                             body: body.transactions,
                             ommers: body.ommers,
                             withdrawals: body.withdrawals,
-                            sidecars: body.sidecars,
                             requests: body.requests,
                         }));
                     }

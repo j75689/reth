@@ -7,16 +7,12 @@ use crate::{
     TransactionsProvider,
 };
 use reth_chainspec::ChainInfo;
-use reth_db::static_file::{
-    HeaderMask, ReceiptMask, SidecarMask, StaticFileCursor, TransactionMask,
-};
+use reth_db::static_file::{HeaderMask, ReceiptMask, StaticFileCursor, TransactionMask};
 use reth_db_api::models::CompactU256;
 use reth_primitives::{
-    Address, BlobSidecars, BlockHash, BlockHashOrNumber, BlockNumber, Header, Receipt,
-    SealedHeader, TransactionMeta, TransactionSigned, TransactionSignedNoHash, TxHash, TxNumber,
-    B256, U256,
+    Address, BlockHash, BlockHashOrNumber, BlockNumber, Header, Receipt, SealedHeader,
+    TransactionMeta, TransactionSigned, TransactionSignedNoHash, TxHash, TxNumber, B256, U256,
 };
-use reth_storage_api::SidecarsProvider;
 use reth_storage_errors::provider::{ProviderError, ProviderResult};
 use std::{
     ops::{Deref, RangeBounds},
@@ -327,19 +323,5 @@ impl<'a> ReceiptProvider for StaticFileJarProvider<'a> {
             }
         }
         Ok(receipts)
-    }
-}
-
-impl<'a> SidecarsProvider for StaticFileJarProvider<'a> {
-    fn sidecars(&self, block_hash: &BlockHash) -> ProviderResult<Option<BlobSidecars>> {
-        Ok(self
-            .cursor()?
-            .get_two::<SidecarMask<BlobSidecars, BlockHash>>(block_hash.into())?
-            .filter(|(_, hash)| hash == block_hash)
-            .map(|(sc, _)| sc))
-    }
-
-    fn sidecars_by_number(&self, num: BlockNumber) -> ProviderResult<Option<BlobSidecars>> {
-        self.cursor()?.get_one::<SidecarMask<BlobSidecars>>(num.into())
     }
 }
