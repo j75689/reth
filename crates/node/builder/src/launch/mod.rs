@@ -29,7 +29,7 @@ use reth_primitives::format_ether;
 #[cfg(feature = "bsc")]
 use reth_primitives::parlia::ParliaConfig;
 use reth_provider::providers::BlockchainProvider;
-use reth_rpc_engine_api::EngineApi;
+use reth_rpc_engine_api::{capabilities::EngineCapabilities, EngineApi};
 use reth_rpc_types::engine::ClientVersionV1;
 use reth_tasks::TaskExecutor;
 use reth_tracing::tracing::{debug, info};
@@ -319,6 +319,7 @@ where
             ctx.components().payload_builder().clone().into(),
             Box::new(ctx.task_executor().clone()),
             client,
+            EngineCapabilities::default(),
         );
         info!(target: "reth::cli", "Engine API handler initialized");
 
