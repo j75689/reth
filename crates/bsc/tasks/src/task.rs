@@ -1,4 +1,5 @@
 use crate::{client::ParliaClient, Storage};
+use alloy_rlp::Encodable;
 use reth_beacon_consensus::{BeaconEngineMessage, ForkchoiceStatus};
 use reth_bsc_consensus::Parlia;
 use reth_chainspec::ChainSpec;
@@ -17,13 +18,14 @@ use std::{
 };
 use tokio::sync::Mutex;
 
+use reth_network_p2p::bodies::client::BodiesClient;
 use tokio::{
     signal,
     sync::{
         mpsc::{self, UnboundedReceiver, UnboundedSender},
         oneshot,
     },
-    time::{interval, timeout, Duration},
+    time::{interval, sleep, timeout, Duration},
 };
 use tracing::{debug, error, info, trace};
 
@@ -212,7 +214,7 @@ impl<
                     // fetch header and verify
                     let fetch_header_result = match timeout(
                         fetch_header_timeout_duration,
-                        block_fetcher.get_header_with_priority(info.block_hash, Priority::High),
+                        block_fetcher.get_header_with_priority(info.block_hash, Priority::Normal),
                     )
                     .await
                     {
@@ -270,6 +272,30 @@ impl<
                     continue
                 };
 
+                // prefetch block body for live sync importing
+                match timeout(
+                    fetch_header_timeout_duration,
+                    block_fetcher.get_block_bodies_with_priority(
+                        vec![sealed_header.hash()],
+                        Priority::Normal,
+                    ),
+                )
+                .await
+                {
+                    Ok(result) => {
+                        if result.is_ok() {
+                            let block_bodies = result.unwrap().into_data();
+                            if block_bodies.length() > 0 {
+                                info.block =
+                                    Some(block_bodies.first().unwrap().create_block(latest_header));
+                            }
+                        }
+                    }
+                    Err(_) => {
+                        trace!(target: "consensus::parlia", "Fetch block body timeout")
+                    }
+                };
+
                 // cache header and block
                 let mut storage = storage.write().await;
                 storage.insert_new_header(sealed_header.clone());
@@ -292,6 +318,7 @@ impl<
     }
 
     fn start_fork_choice_update_notifier(&self) {
+        let block_interval = self.block_interval;
         let fork_choice_rx = self.fork_choice_rx.clone();
         let to_engine = self.to_engine.clone();
         let chain_tracker_tx = self.chain_tracker_tx.clone();
@@ -356,6 +383,7 @@ impl<
                                                 }
                                                 ForkchoiceStatus::Syncing => {
                                                     debug!(target: "consensus::parlia", ?fcu_response, "Forkchoice update returned SYNCING, waiting for VALID");
+                                                    sleep(Duration::from_secs(block_interval)).await;
                                                     continue
                                                 }
                                             }
