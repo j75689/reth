@@ -1,4 +1,5 @@
 use crate::{client::ParliaClient, Storage};
+use alloy_rlp::Encodable;
 use reth_beacon_consensus::{BeaconEngineMessage, ForkchoiceStatus};
 use reth_bsc_consensus::Parlia;
 use reth_chainspec::ChainSpec;
@@ -17,6 +18,7 @@ use std::{
 };
 use tokio::sync::Mutex;
 
+use reth_network_p2p::bodies::client::BodiesClient;
 use tokio::{
     signal,
     sync::{
@@ -212,7 +214,7 @@ impl<
                     // fetch header and verify
                     let fetch_header_result = match timeout(
                         fetch_header_timeout_duration,
-                        block_fetcher.get_header_with_priority(info.block_hash, Priority::High),
+                        block_fetcher.get_header_with_priority(info.block_hash, Priority::Normal),
                     )
                     .await
                     {
@@ -268,6 +270,28 @@ impl<
                 trace!(target: "consensus::parlia", sealed_header = ?sealed_header, is_valid_header = ?is_valid_header, "Fetch a sealed header");
                 if !is_valid_header {
                     continue
+                };
+
+                // prefetch block body for live sync importing
+                match timeout(
+                    fetch_header_timeout_duration,
+                    block_fetcher
+                        .get_block_bodies_with_priority(vec![sealed_header.hash()], Priority::Normal),
+                )
+                .await
+                {
+                    Ok(result) => {
+                        if result.is_ok() {
+                            let block_bodies = result.unwrap().into_data();
+                            if block_bodies.length() > 0 {
+                                info.block =
+                                    Some(block_bodies.first().unwrap().create_block(latest_header));
+                            }
+                        }
+                    }
+                    Err(_) => {
+                        trace!(target: "consensus::parlia", "Fetch block body timeout")
+                    }
                 };
 
                 // cache header and block

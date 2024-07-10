@@ -34,7 +34,7 @@ use client::*;
 mod task;
 use task::*;
 
-const STORAGE_CACHE_NUM: usize = 1000;
+const STORAGE_CACHE_NUM: usize = 10000;
 
 /// Builder type for configuring the setup
 #[derive(Debug)]
