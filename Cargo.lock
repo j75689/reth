@@ -7459,6 +7459,7 @@ dependencies = [
  "reth-network-p2p",
  "reth-network-peers",
  "reth-primitives",
+ "reth-primitives-traits",
  "reth-provider",
  "reth-rpc-types",
  "secp256k1",
