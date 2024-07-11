@@ -13,7 +13,7 @@ use reth_rpc_types::engine::ForkchoiceState;
 use std::{
     clone::Clone,
     fmt,
-    sync::{atomic::AtomicBool, Arc},
+    sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
 use tokio::sync::Mutex;
@@ -24,7 +24,7 @@ use tokio::{
         mpsc::{self, UnboundedReceiver, UnboundedSender},
         oneshot,
     },
-    time::{interval, sleep, timeout, Duration},
+    time::{interval, timeout, Duration},
 };
 use tracing::{debug, error, info, trace};
 
@@ -38,6 +38,7 @@ enum ForkChoiceMessage {
 #[derive(Debug, Clone)]
 struct NewHeaderEvent {
     header: SealedHeader,
+    trusted_header: SealedHeader,
     pipeline_sync: bool,
 }
 
@@ -81,8 +82,6 @@ pub(crate) struct ParliaEngineTask<
     chain_tracker_tx: UnboundedSender<ForkChoiceMessage>,
     /// The channel to receive chain tracker messages
     chain_tracker_rx: Arc<Mutex<UnboundedReceiver<ForkChoiceMessage>>>,
-    /// The flag to indicate if the fork choice update is syncing
-    syncing_fcu: Arc<AtomicBool>,
 }
 
 // === impl ParliaEngineTask ===
@@ -121,7 +120,6 @@ impl<
             fork_choice_rx: Arc::new(Mutex::new(fork_choice_rx)),
             chain_tracker_tx,
             chain_tracker_rx: Arc::new(Mutex::new(chain_tracker_rx)),
-            syncing_fcu: Arc::new(AtomicBool::new(false)),
         };
 
         this.start_block_event_listening();
@@ -141,7 +139,6 @@ impl<
         let consensus = self.consensus.clone();
         let fork_choice_tx = self.fork_choice_tx.clone();
         let fetch_header_timeout_duration = Duration::from_secs(block_interval);
-        let syncing_fcu = self.syncing_fcu.clone();
 
         tokio::spawn(async move {
             loop {
@@ -192,11 +189,6 @@ impl<
                         info!(target: "consensus::parlia", "block event listener shutting down...");
                         return
                     },
-                }
-
-                let is_syncing_fcu = syncing_fcu.load(std::sync::atomic::Ordering::Relaxed);
-                if is_syncing_fcu {
-                    continue
                 }
 
                 // skip if number is lower than best number
@@ -288,6 +280,7 @@ impl<
                     // finalized hash.
                     // this can make Block Sync Engine to use pipeline sync mode.
                     pipeline_sync: (trusted_header.number + EPOCH_SLOTS) < sealed_header.number,
+                    trusted_header,
                 }));
                 if result.is_err() {
                     error!(target: "consensus::parlia", "Failed to send new block event to fork choice");
@@ -302,7 +295,6 @@ impl<
         let to_engine = self.to_engine.clone();
         let chain_tracker_tx = self.chain_tracker_tx.clone();
         let storage = self.storage.clone();
-        let syncing_fcu = self.syncing_fcu.clone();
         tokio::spawn(async move {
             loop {
                 let mut fork_choice_rx_guard = fork_choice_rx.lock().await;
@@ -331,9 +323,6 @@ impl<
                                     state.finalized_block_hash = finalized_hash;
                                 }
 
-                                let mut is_valid_fcu = false;
-                                syncing_fcu.store(true, std::sync::atomic::Ordering::Relaxed);
-                                loop {
                                     // send the new update to the engine, this will trigger the engine
                                     // to download and execute the block we just inserted
                                     let (tx, rx) = oneshot::channel();
@@ -352,40 +341,31 @@ impl<
                                         }
                                     };
 
-                                    match rx_result {
-                                        Ok(fcu_response) => {
-                                            match fcu_response.forkchoice_status() {
-                                                ForkchoiceStatus::Valid => {
-                                                    trace!(target: "consensus::parlia", ?fcu_response, "Forkchoice update returned valid response");
-                                                    is_valid_fcu = true;
-                                                    break
-                                                }
-                                                ForkchoiceStatus::Invalid => {
-                                                    error!(target: "consensus::parlia", ?fcu_response, "Forkchoice update returned invalid response");
-                                                    break
-                                                }
-                                                ForkchoiceStatus::Syncing => {
-                                                    trace!(target: "consensus::parlia", ?fcu_response, "Forkchoice update returned SYNCING, waiting for VALID");
-                                                    sleep(Duration::from_millis(100)).await;
-                                                    continue
-                                                }
+                                match rx_result {
+                                    Ok(fcu_response) => {
+                                        match fcu_response.forkchoice_status() {
+                                            ForkchoiceStatus::Valid => {
+                                                trace!(target: "consensus::parlia", ?fcu_response, "Forkchoice update returned valid response");
+                                            }
+                                            ForkchoiceStatus::Invalid => {
+                                                error!(target: "consensus::parlia", ?fcu_response, "Forkchoice update returned invalid response");
+                                                continue
+                                            }
+                                            ForkchoiceStatus::Syncing => {
+                                                trace!(target: "consensus::parlia", ?fcu_response, "Forkchoice update returned SYNCING, waiting for VALID");
                                             }
                                         }
-                                        Err(err) => {
-                                            error!(target: "consensus::parlia", %err, "Parlia fork choice update failed");
-                                            break
-                                        }
                                     }
-                                }
-                                syncing_fcu.store(false, std::sync::atomic::Ordering::Relaxed);
-
-                                if !is_valid_fcu {
-                                    continue
+                                    Err(err) => {
+                                        error!(target: "consensus::parlia", %err, "Parlia fork choice update failed");
+                                        continue
+                                    }
                                 }
 
                                 let result = chain_tracker_tx.send(ForkChoiceMessage::NewHeader(NewHeaderEvent {
                                     header: new_header.clone(),
                                     pipeline_sync: event.pipeline_sync,
+                                    trusted_header: event.trusted_header,
                                 }));
                                 if result.is_err() {
                                     error!(target: "consensus::parlia", "Failed to send new block event to chain tracker");
@@ -419,7 +399,7 @@ impl<
                         }
                         match msg.unwrap() {
                             ForkChoiceMessage::NewHeader(event) => {
-                                let new_header = event.header;
+                                let new_header = event.trusted_header;
 
                                 let snap = match snapshot_reader.snapshot(&new_header, None) {
                                     Ok(snap) => snap,
