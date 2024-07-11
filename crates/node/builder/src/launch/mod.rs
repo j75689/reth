@@ -13,7 +13,7 @@ use reth_beacon_consensus::{
     BeaconConsensusEngine,
 };
 #[cfg(feature = "bsc")]
-use reth_bsc_tasks::ParliaEngineBuilder;
+use reth_bsc_engine::ParliaEngineBuilder;
 use reth_consensus::Consensus;
 use reth_consensus_debug_client::{DebugConsensusClient, EtherscanBlockProvider, RpcBlockProvider};
 use reth_engine_util::EngineMessageStreamExt;
