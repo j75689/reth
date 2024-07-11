@@ -7301,7 +7301,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "reth-bsc-tasks"
+name = "reth-bsc-engine"
 version = "1.0.0"
 dependencies = [
  "alloy-dyn-abi",
@@ -8328,7 +8328,7 @@ dependencies = [
  "reth-auto-seal-consensus",
  "reth-beacon-consensus",
  "reth-blockchain-tree",
- "reth-bsc-tasks",
+ "reth-bsc-engine",
  "reth-chainspec",
  "reth-config",
  "reth-consensus",

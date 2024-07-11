@@ -45,7 +45,7 @@ reth-node-events.workspace = true
 reth-consensus.workspace = true
 reth-consensus-debug-client.workspace = true
 reth-rpc-types.workspace = true
-reth-bsc-tasks = { workspace = true, optional = true}
+reth-bsc-engine = { workspace = true, optional = true}
 
 ## async
 futures.workspace = true
@@ -80,5 +80,5 @@ tempfile.workspace = true
 
 [features]
 bsc = [
-    "reth-bsc-tasks/bsc",
+    "reth-bsc-engine/bsc",
 ]
