@@ -6,7 +6,8 @@ use reth_engine_primitives::EngineTypes;
 use reth_evm_bsc::SnapshotReader;
 use reth_network::message::EngineMessage;
 use reth_network_p2p::{headers::client::HeadersClient, priority::Priority};
-use reth_primitives::{Block, BlockBody, BlockHashOrNumber, SealedHeader};
+use reth_primitives::{Block, BlockBody, BlockHashOrNumber, SealedHeader, B256};
+use reth_primitives_traits::constants::EPOCH_SLOTS;
 use reth_provider::{BlockReaderIdExt, CanonChainTracker, ParliaProvider};
 use reth_rpc_types::engine::ForkchoiceState;
 use std::{
@@ -37,6 +38,7 @@ enum ForkChoiceMessage {
 #[derive(Debug, Clone)]
 struct NewHeaderEvent {
     header: SealedHeader,
+    pipeline_sync: bool,
 }
 
 /// A struct that contains a block hash or number and a block
@@ -282,6 +284,10 @@ impl<
                 drop(storage);
                 let result = fork_choice_tx.send(ForkChoiceMessage::NewHeader(NewHeaderEvent {
                     header: sealed_header.clone(),
+                    // if the pipeline sync is true, the fork choice will not use the safe and
+                    // finalized hash.
+                    // this can make Block Sync Engine to use pipeline sync mode.
+                    pipeline_sync: (trusted_header.number + EPOCH_SLOTS) < sealed_header.number,
                 }));
                 if result.is_err() {
                     error!(target: "consensus::parlia", "Failed to send new block event to fork choice");
@@ -314,12 +320,16 @@ impl<
                                 let finalized_hash = storage.best_finalized_hash;
                                 drop(storage);
 
-                                let state = ForkchoiceState {
+                                // safe(justified) and finalized hash will be determined in the parlia consensus engine and stored in the snapshot after the block sync
+                                let mut state = ForkchoiceState {
                                     head_block_hash: new_header.hash(),
-                                    // safe(justified) and finalized hash will be determined in the parlia consensus engine and stored in the snapshot after the block sync
-                                    safe_block_hash: safe_hash,
-                                    finalized_block_hash: finalized_hash,
+                                    safe_block_hash: B256::ZERO,
+                                    finalized_block_hash: B256::ZERO,
                                 };
+                                if !event.pipeline_sync {
+                                    state.safe_block_hash = safe_hash;
+                                    state.finalized_block_hash = finalized_hash;
+                                }
 
                                 let mut is_valid_fcu = false;
                                 syncing_fcu.store(true, std::sync::atomic::Ordering::Relaxed);
@@ -355,7 +365,7 @@ impl<
                                                     break
                                                 }
                                                 ForkchoiceStatus::Syncing => {
-                                                    debug!(target: "consensus::parlia", ?fcu_response, "Forkchoice update returned SYNCING, waiting for VALID");
+                                                    trace!(target: "consensus::parlia", ?fcu_response, "Forkchoice update returned SYNCING, waiting for VALID");
                                                     sleep(Duration::from_millis(100)).await;
                                                     continue
                                                 }
@@ -375,6 +385,7 @@ impl<
 
                                 let result = chain_tracker_tx.send(ForkChoiceMessage::NewHeader(NewHeaderEvent {
                                     header: new_header.clone(),
+                                    pipeline_sync: event.pipeline_sync,
                                 }));
                                 if result.is_err() {
                                     error!(target: "consensus::parlia", "Failed to send new block event to chain tracker");
