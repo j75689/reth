@@ -365,7 +365,7 @@ impl<
                                                     break
                                                 }
                                                 ForkchoiceStatus::Syncing => {
-                                                    debug!(target: "consensus::parlia", ?fcu_response, "Forkchoice update returned SYNCING, waiting for VALID");
+                                                    trace!(target: "consensus::parlia", ?fcu_response, "Forkchoice update returned SYNCING, waiting for VALID");
                                                     sleep(Duration::from_millis(100)).await;
                                                     continue
                                                 }
