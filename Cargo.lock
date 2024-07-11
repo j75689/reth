@@ -7917,6 +7917,7 @@ dependencies = [
  "reth-beacon-consensus",
  "reth-blockchain-tree",
  "reth-blockchain-tree-api",
+ "reth-bsc-consensus",
  "reth-chainspec",
  "reth-consensus",
  "reth-db",

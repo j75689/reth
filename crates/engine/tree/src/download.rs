@@ -271,7 +271,10 @@ mod tests {
     use super::*;
     use crate::test_utils::insert_headers_into_client;
     use assert_matches::assert_matches;
+    #[cfg(not(feature = "bsc"))]
     use reth_beacon_consensus::EthBeaconConsensus;
+    #[cfg(feature = "bsc")]
+    use reth_bsc_consensus::Parlia;
     use reth_chainspec::{ChainSpecBuilder, MAINNET};
     use reth_network_p2p::test_utils::TestFullBlockClient;
     use reth_primitives::{constants::ETHEREUM_BLOCK_GAS_LIMIT, Header};
@@ -301,7 +304,11 @@ mod tests {
             .seal_slow();
 
             insert_headers_into_client(&client, header, 0..total_blocks);
+
+            #[cfg(not(feature = "bsc"))]
             let consensus = Arc::new(EthBeaconConsensus::new(chain_spec));
+            #[cfg(feature = "bsc")]
+            let consensus = Arc::new(Parlia::new(chain_spec, Default::default()));
 
             let block_downloader = BasicBlockDownloader::new(client.clone(), consensus);
             Self { block_downloader, client }
