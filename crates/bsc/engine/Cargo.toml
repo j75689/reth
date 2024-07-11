@@ -28,6 +28,7 @@ reth-beacon-consensus.workspace = true
 reth-bsc-consensus.workspace = true
 reth-evm-bsc.workspace = true
 reth-evm.workspace = true
+reth-primitives-traits.workspace = true
 
 # eth
 alloy-rlp.workspace = true
