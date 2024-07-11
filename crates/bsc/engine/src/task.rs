@@ -1,5 +1,4 @@
 use crate::{client::ParliaClient, Storage};
-use alloy_rlp::Encodable;
 use reth_beacon_consensus::{BeaconEngineMessage, ForkchoiceStatus};
 use reth_bsc_consensus::Parlia;
 use reth_chainspec::ChainSpec;
@@ -18,7 +17,6 @@ use std::{
 };
 use tokio::sync::Mutex;
 
-use reth_network_p2p::bodies::client::BodiesClient;
 use tokio::{
     signal,
     sync::{
@@ -35,7 +33,7 @@ enum ForkChoiceMessage {
     /// Broadcast new hash.
     NewHeader(NewHeaderEvent),
 }
-/// internal message to beacon engine
+/// internal message to notify the engine of a new block
 #[derive(Debug, Clone)]
 struct NewHeaderEvent {
     header: SealedHeader,
@@ -366,6 +364,7 @@ impl<
                                         }
                                         Err(err) => {
                                             error!(target: "consensus::parlia", %err, "Parlia fork choice update failed");
+                                            break
                                         }
                                     }
                                 }
