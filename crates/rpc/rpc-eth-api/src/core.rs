@@ -8,7 +8,7 @@ use reth_rpc_server_types::{result::internal_rpc_err, ToRpcResult};
 use reth_rpc_types::{
     serde_helpers::JsonStorageKey,
     state::{EvmOverrides, StateOverride},
-    AccessListWithGasUsed, AnyTransactionReceipt, BlockOverrides, Bundle,
+    AccessListWithGasUsed, AnyTransactionReceipt, BlockOverrides, BlockSidecar, Bundle,
     EIP1186AccountProofResponse, EthCallResponse, FeeHistory, Header, Index, RichBlock,
     StateContext, SyncStatus, Transaction, TransactionRequest, Work,
 };
@@ -325,6 +325,14 @@ pub trait EthApi {
         keys: Vec<JsonStorageKey>,
         block_number: Option<BlockId>,
     ) -> RpcResult<EIP1186AccountProofResponse>;
+
+    /// Returns the Sidecars of a given block number or hash.
+    #[method(name = "getBlobSidecars")]
+    async fn get_blob_sidecars(&self, block_id: BlockId) -> RpcResult<Option<Vec<BlockSidecar>>>;
+
+    /// Returns a sidecar of a given blob transaction
+    #[method(name = "getBlockSidecarByTxHash")]
+    async fn get_block_sidecar_by_tx_hash(&self, hash: B256) -> RpcResult<Option<BlockSidecar>>;
 }
 
 #[async_trait::async_trait]
@@ -722,5 +730,17 @@ where
     ) -> RpcResult<EIP1186AccountProofResponse> {
         trace!(target: "rpc::eth", ?address, ?keys, ?block_number, "Serving eth_getProof");
         Ok(EthState::get_proof(self, address, keys, block_number)?.await?)
+    }
+
+    /// Handler for: `eth_getBlobSidecars`
+    async fn get_blob_sidecars(&self, block_id: BlockId) -> RpcResult<Option<Vec<BlockSidecar>>> {
+        trace!(target: "rpc::eth", ?block_id, "Serving eth_getBlobSidecars");
+        Ok(EthBlocks::rpc_block_sidecars(self, block_id).await?)
+    }
+
+    /// Handler for: `eth_getBlockSidecarByTxHash`
+    async fn get_block_sidecar_by_tx_hash(&self, hash: B256) -> RpcResult<Option<BlockSidecar>> {
+        trace!(target: "rpc::eth", ?hash, "Serving eth_getBlockSidecarByTxHash");
+        Ok(EthTransactions::rpc_transaction_sidecar(self, hash).await?)
     }
 }

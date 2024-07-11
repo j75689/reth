@@ -83,6 +83,9 @@ assert_matches.workspace = true
 tempfile.workspace = true
 
 [features]
+bsc = [
+    "reth-primitives/bsc",
+]
 optimism = [
     "reth-primitives/optimism",
     "reth-rpc-types-compat/optimism",
@@ -93,9 +96,4 @@ optimism = [
     "jsonrpsee-types",
     "reth-evm-optimism",
     "reth-rpc-eth-types/optimism",
-]
-
-
-bsc = [
-    "reth-primitives/bsc",
 ]

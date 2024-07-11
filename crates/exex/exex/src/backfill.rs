@@ -153,6 +153,7 @@ where
                 body: block.body,
                 ommers: block.ommers,
                 withdrawals: block.withdrawals,
+                sidecars: block.sidecars,
                 requests: block.requests,
             }
             .with_senders_unchecked(senders);
@@ -296,6 +297,7 @@ mod tests {
             receipts: block_execution_output.receipts.clone().into(),
             first_block: block_number,
             requests: vec![Requests(block_execution_output.requests.clone())],
+            snapshots: vec![],
         }
     }
 

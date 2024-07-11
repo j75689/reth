@@ -16,8 +16,7 @@ use reth_primitives::{
     TransactionSigned, TransactionSignedNoHash, TxHash, TxNumber, Withdrawal, Withdrawals, B256,
     U256,
 };
-use reth_storage_api::StateProofProvider;
-use reth_storage_api::SidecarsProvider;
+use reth_storage_api::{SidecarsProvider, StateProofProvider};
 use reth_storage_errors::provider::{ProviderError, ProviderResult};
 use reth_trie::{updates::TrieUpdates, AccountProof};
 use revm::{

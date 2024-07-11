@@ -3,13 +3,12 @@
 
 use alloy_rlp::{RlpDecodable, RlpEncodable};
 use reth_codecs_derive::derive_arbitrary;
-use serde::{Deserialize, Serialize};
 
 /// UpdateStatus packet introduced in BSC to notify peers whether to broadcast transaction or not.
 /// It is used during the p2p handshake.
 #[derive_arbitrary(rlp)]
 #[derive(Debug, Clone, PartialEq, Eq, RlpEncodable, RlpDecodable)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct UpgradeStatus {
     /// Extension for support customized features for BSC.
     pub extension: UpgradeStatusExtension,
@@ -19,7 +18,7 @@ pub struct UpgradeStatus {
 /// This flag currently is ignored, and will be supported later.
 #[derive_arbitrary(rlp)]
 #[derive(Debug, Clone, PartialEq, Eq, RlpEncodable, RlpDecodable)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct UpgradeStatusExtension {
     // TODO: support disable_peer_tx_broadcast flag
     /// To notify a peer to disable the broadcast of transactions or not.

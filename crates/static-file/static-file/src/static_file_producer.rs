@@ -194,6 +194,7 @@ impl<DB: Database> StaticFileProducerInner<DB> {
             headers: stages_checkpoints[0],
             receipts: stages_checkpoints[1],
             transactions: stages_checkpoints[2],
+            sidecars: stages_checkpoints[2],
         };
         let targets = self.get_static_file_targets(highest_static_files)?;
         self.run(targets)?;

@@ -1,4 +1,4 @@
-use crate::execute::BscEvmExecutor;
+use crate::{execute::BscEvmExecutor, BscBlockExecutionError};
 use lazy_static::lazy_static;
 use reth_errors::ProviderError;
 use reth_evm::ConfigureEvm;
@@ -551,7 +551,7 @@ where
         transaction: &TransactionSigned,
         state: &mut State<DB>,
     ) where
-        DB: Database<Error = ProviderError>,
+        DB: Database<Error: Into<ProviderError> + std::fmt::Display>,
     {
         let tx_hash = transaction.recalculate_hash();
         if let Some(patch) = MAINNET_PATCHES_BEFORE_TX.get(&tx_hash) {
@@ -566,7 +566,7 @@ where
         transaction: &TransactionSigned,
         state: &mut State<DB>,
     ) where
-        DB: Database<Error = ProviderError>,
+        DB: Database<Error: Into<ProviderError> + std::fmt::Display>,
     {
         let tx_hash = transaction.recalculate_hash();
         if let Some(patch) = CHAPEL_PATCHES_BEFORE_TX.get(&tx_hash) {
@@ -581,7 +581,7 @@ where
         transaction: &TransactionSigned,
         state: &mut State<DB>,
     ) where
-        DB: Database<Error = ProviderError>,
+        DB: Database<Error: Into<ProviderError> + std::fmt::Display>,
     {
         let tx_hash = transaction.recalculate_hash();
         if let Some(patch) = MAINNET_PATCHES_AFTER_TX.get(&tx_hash) {
@@ -596,7 +596,7 @@ where
         transaction: &TransactionSigned,
         state: &mut State<DB>,
     ) where
-        DB: Database<Error = ProviderError>,
+        DB: Database<Error: Into<ProviderError> + std::fmt::Display>,
     {
         let tx_hash = transaction.recalculate_hash();
         if let Some(patch) = CHAPEL_PATCHES_AFTER_TX.get(&tx_hash) {
@@ -609,9 +609,12 @@ where
 
 fn apply_patch<DB>(state: &mut State<DB>, address: Address, storage: &HashMap<U256, U256>)
 where
-    DB: Database<Error = ProviderError>,
+    DB: Database<Error: Into<ProviderError> + std::fmt::Display>,
 {
-    let account = state.load_cache_account(address).unwrap();
+    let account = state
+        .load_cache_account(address)
+        .map_err(|err| BscBlockExecutionError::ProviderInnerError { error: Box::new(err.into()) })
+        .unwrap();
     let account_change = account.change(
         account.account_info().unwrap_or_default(),
         storage

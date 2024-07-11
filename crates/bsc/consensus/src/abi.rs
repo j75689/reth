@@ -1,6 +1,7 @@
 use crate::{Parlia, VoteAddress};
 use alloy_dyn_abi::{DynSolValue, FunctionExt, JsonAbiExt};
 use lazy_static::lazy_static;
+use reth_chainspec::BscHardforks;
 use reth_primitives::{
     system_contracts::{STAKE_HUB_CONTRACT, VALIDATOR_CONTRACT},
     Address, BlockNumber, Bytes, U256,

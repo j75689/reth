@@ -5,6 +5,7 @@ use reth_bsc_consensus::{
     COLLECT_ADDITIONAL_VOTES_REWARD_RATIO, DIFF_INTURN, MAX_SYSTEM_REWARD, SYSTEM_REWARD_PERCENT,
 };
 use reth_errors::{BlockExecutionError, BlockValidationError, ProviderError};
+use reth_ethereum_forks::BscHardforks;
 use reth_evm::ConfigureEvm;
 use reth_primitives::{
     hex,
@@ -30,7 +31,7 @@ pub(crate) struct PostExecutionInput {
 impl<EvmConfig, DB, P> BscBlockExecutor<EvmConfig, DB, P>
 where
     EvmConfig: ConfigureEvm,
-    DB: Database<Error = ProviderError>,
+    DB: Database<Error: Into<ProviderError> + std::fmt::Display>,
     P: ParliaProvider,
 {
     /// Apply post execution state changes, including system txs and other state change.
@@ -62,13 +63,12 @@ where
             )?;
         }
 
-        if self.parlia().chain_spec().is_feynman_active_at_timestamp(block.timestamp) {
+        if self.chain_spec().is_feynman_active_at_timestamp(block.timestamp) {
             // apply system contract upgrade
             self.upgrade_system_contracts(block.number, block.timestamp, parent.timestamp)?;
         }
 
-        if self.parlia().chain_spec().is_on_feynman_at_timestamp(block.timestamp, parent.timestamp)
-        {
+        if self.chain_spec().is_on_feynman_at_timestamp(block.timestamp, parent.timestamp) {
             self.init_feynman_contracts(
                 validator,
                 system_txs,
@@ -81,7 +81,7 @@ where
         // slash validator if it's not inturn
         if block.difficulty != DIFF_INTURN {
             let spoiled_val = snap.inturn_validator();
-            let signed_recently = if self.parlia().chain_spec().is_plato_active_at_block(number) {
+            let signed_recently = if self.chain_spec().is_plato_active_at_block(number) {
                 snap.sign_recently(spoiled_val)
             } else {
                 snap.recent_proposers.iter().any(|(_, v)| *v == spoiled_val)
@@ -101,7 +101,7 @@ where
 
         self.distribute_incoming(header, system_txs, receipts, cumulative_gas_used, env.clone())?;
 
-        if self.parlia().chain_spec().is_plato_active_at_block(number) {
+        if self.chain_spec().is_plato_active_at_block(number) {
             self.distribute_finality_reward(
                 header,
                 system_txs,
@@ -112,7 +112,7 @@ where
         }
 
         // update validator set after Feynman upgrade
-        if self.parlia().chain_spec().is_feynman_active_at_timestamp(header.timestamp) &&
+        if self.chain_spec().is_feynman_active_at_timestamp(header.timestamp) &&
             is_breathe_block(parent.timestamp, header.timestamp) &&
             !self
                 .parlia()
@@ -159,7 +159,7 @@ where
         validators.sort();
 
         let validator_num = validators.len();
-        if self.parlia().chain_spec().is_on_luban_at_block(number) {
+        if self.chain_spec().is_on_luban_at_block(number) {
             vote_addrs_map = validators
                 .iter()
                 .cloned()
@@ -171,7 +171,7 @@ where
             .into_iter()
             .flat_map(|v| {
                 let mut bytes = v.to_vec();
-                if self.parlia().chain_spec().is_luban_active_at_block(number) {
+                if self.chain_spec().is_luban_active_at_block(number) {
                     bytes.extend_from_slice(vote_addrs_map[&v].as_ref());
                 }
                 bytes
@@ -265,10 +265,9 @@ where
     ) -> Result<(), BlockExecutionError> {
         let validator = header.beneficiary;
 
-        let system_account = self
-            .state
-            .load_cache_account(SYSTEM_ADDRESS)
-            .map_err(|err| BscBlockExecutionError::ProviderInnerError { error: err.into() })?;
+        let system_account = self.state.load_cache_account(SYSTEM_ADDRESS).map_err(|err| {
+            BscBlockExecutionError::ProviderInnerError { error: Box::new(err.into()) }
+        })?;
 
         if header.number != 1 &&
             (system_account.account.is_none() ||
@@ -293,10 +292,13 @@ where
         let system_reward_balance = self
             .state
             .basic(SYSTEM_REWARD_CONTRACT.parse().unwrap())
+            .map_err(|err| BscBlockExecutionError::ProviderInnerError {
+                error: Box::new(err.into()),
+            })
             .unwrap()
             .unwrap_or_default()
             .balance;
-        if !self.parlia().chain_spec().is_kepler_active_at_timestamp(header.timestamp) &&
+        if !self.chain_spec().is_kepler_active_at_timestamp(header.timestamp) &&
             system_reward_balance < U256::from(MAX_SYSTEM_REWARD)
         {
             let reward_to_system = block_reward >> SYSTEM_REWARD_PERCENT;

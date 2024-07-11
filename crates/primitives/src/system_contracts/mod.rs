@@ -1,14 +1,13 @@
 #![cfg(feature = "bsc")]
 #![allow(missing_docs)]
 
+use crate::{hex, Address, BlockNumber};
 use alloy_chains::Chain;
-use alloy_primitives::BlockNumber;
 use include_dir::{include_dir, Dir};
 use lazy_static::lazy_static;
 use reth_chainspec::{ChainSpec, BSC_MAINNET, BSC_TESTNET};
-use reth_ethereum_forks::Hardfork;
-use revm::primitives::{Address, Bytecode};
-use revm_primitives::hex;
+use reth_ethereum_forks::BscHardfork;
+use revm_primitives::Bytecode;
 use std::collections::HashMap;
 use thiserror::Error;
 
@@ -52,15 +51,15 @@ lazy_static! {
     ];
 
     /// mainnet system contracts: hardfork -> address -> Bytecode
-    pub(crate) static ref BSC_MAINNET_CONTRACTS: HashMap<Hardfork, HashMap<String, Option<Bytecode>>> =
+    pub(crate) static ref BSC_MAINNET_CONTRACTS: HashMap<String, HashMap<String, Option<Bytecode>>> =
         read_all_system_contracts(BSC_MAINNET.as_ref());
 
     /// testnet system contracts: hardfork -> address -> Bytecode
-    pub(crate) static ref BSC_TESTNET_CONTRACTS: HashMap<Hardfork, HashMap<String, Option<Bytecode>>> =
+    pub(crate) static ref BSC_TESTNET_CONTRACTS: HashMap<String, HashMap<String, Option<Bytecode>>> =
         read_all_system_contracts(BSC_TESTNET.as_ref());
 
     /// qa system contracts: hardfork -> address -> Bytecode
-    pub(crate) static ref BSC_QA_CONTRACTS: HashMap<Hardfork, HashMap<String, Option<Bytecode>>> =
+    pub(crate) static ref BSC_QA_CONTRACTS: HashMap<String, HashMap<String, Option<Bytecode>>> =
         read_all_system_contracts(BSC_TESTNET.as_ref());
 }
 
@@ -138,42 +137,42 @@ pub enum SystemContractError {
 }
 
 /// Return hardforks which contain upgrades of system contracts.
-fn hardforks_with_system_contracts() -> Vec<Hardfork> {
+fn hardforks_with_system_contracts() -> Vec<BscHardfork> {
     vec![
-        Hardfork::Bruno,
-        Hardfork::Euler,
-        Hardfork::Feynman,
-        Hardfork::FeynmanFix,
-        Hardfork::Gibbs,
-        Hardfork::Kepler,
-        Hardfork::Luban,
-        Hardfork::MirrorSync,
-        Hardfork::Moran,
-        Hardfork::Niels,
-        Hardfork::Planck,
-        Hardfork::Plato,
-        Hardfork::Ramanujan,
-        Hardfork::HaberFix,
+        BscHardfork::Bruno,
+        BscHardfork::Euler,
+        BscHardfork::Feynman,
+        BscHardfork::FeynmanFix,
+        BscHardfork::Gibbs,
+        BscHardfork::Kepler,
+        BscHardfork::Luban,
+        BscHardfork::MirrorSync,
+        BscHardfork::Moran,
+        BscHardfork::Niels,
+        BscHardfork::Planck,
+        BscHardfork::Plato,
+        BscHardfork::Ramanujan,
+        BscHardfork::HaberFix,
     ]
 }
 
 /// Load the folder names which stores the codes of system contracts.
-fn hardfork_to_dir_name(hardfork: &Hardfork) -> Result<String, SystemContractError> {
+fn hardfork_to_dir_name(hardfork: &BscHardfork) -> Result<String, SystemContractError> {
     let name = match hardfork {
-        Hardfork::Bruno => "bruno",
-        Hardfork::Euler => "euler",
-        Hardfork::Feynman => "feynman",
-        Hardfork::FeynmanFix => "feynman_fix",
-        Hardfork::Gibbs => "gibbs",
-        Hardfork::Kepler => "kepler",
-        Hardfork::Luban => "luban",
-        Hardfork::MirrorSync => "mirror_sync",
-        Hardfork::Moran => "moran",
-        Hardfork::Niels => "niels",
-        Hardfork::Planck => "planck",
-        Hardfork::Plato => "plato",
-        Hardfork::Ramanujan => "ramanujan",
-        Hardfork::HaberFix => "haber_fix",
+        BscHardfork::Bruno => "bruno",
+        BscHardfork::Euler => "euler",
+        BscHardfork::Feynman => "feynman",
+        BscHardfork::FeynmanFix => "feynman_fix",
+        BscHardfork::Gibbs => "gibbs",
+        BscHardfork::Kepler => "kepler",
+        BscHardfork::Luban => "luban",
+        BscHardfork::MirrorSync => "mirror_sync",
+        BscHardfork::Moran => "moran",
+        BscHardfork::Niels => "niels",
+        BscHardfork::Planck => "planck",
+        BscHardfork::Plato => "plato",
+        BscHardfork::Ramanujan => "ramanujan",
+        BscHardfork::HaberFix => "haber_fix",
         _ => {
             return Err(SystemContractError::InvalidHardfork);
         }
@@ -184,7 +183,7 @@ fn hardfork_to_dir_name(hardfork: &Hardfork) -> Result<String, SystemContractErr
 /// Get all system contracts with byte codes.
 fn read_all_system_contracts(
     spec: &ChainSpec,
-) -> HashMap<Hardfork, HashMap<String, Option<Bytecode>>> {
+) -> HashMap<String, HashMap<String, Option<Bytecode>>> {
     let dir: String;
     if spec.chain.eq(&Chain::bsc_mainnet()) {
         dir = "mainnet".to_string();
@@ -220,7 +219,7 @@ fn read_all_system_contracts(
             let bytes = hex::decode(body).unwrap();
             inner_map.insert(c.address.to_string(), Some(Bytecode::new_raw(bytes.into())));
         }
-        outer_map.insert(hardfork, inner_map);
+        outer_map.insert(hardfork.name().to_string(), inner_map);
     }
 
     outer_map
@@ -229,7 +228,7 @@ fn read_all_system_contracts(
 /// Get byte codes for a specific hardfork.
 fn get_system_contract_codes(
     spec: &ChainSpec,
-    hardfork: &Hardfork,
+    hardfork: &str,
 ) -> Result<HashMap<String, Option<Bytecode>>, SystemContractError> {
     return if spec.chain.eq(&Chain::bsc_mainnet()) {
         if let Some(m) = BSC_MAINNET_CONTRACTS.get(hardfork) {
@@ -262,11 +261,11 @@ pub fn get_upgrade_system_contracts(
     parent_block_time: u64,
 ) -> Result<HashMap<Address, Option<Bytecode>>, SystemContractError> {
     let mut m = HashMap::new();
-    for (name, condition) in &spec.hardforks {
+    for (fork, condition) in spec.hardforks.forks_iter() {
         if condition.transitions_at_block(block_number) ||
             condition.transitions_at_timestamp(block_time, parent_block_time)
         {
-            if let Ok(contracts) = get_system_contract_codes(spec, name) {
+            if let Ok(contracts) = get_system_contract_codes(spec, fork.name()) {
                 contracts.iter().for_each(|(k, v)| {
                     let address = Address::parse_checksummed(k.clone(), None).unwrap();
                     m.insert(address, v.clone());
@@ -287,7 +286,7 @@ mod tests {
 
     #[test]
     fn test_get_system_contract_code() {
-        let res = get_system_contract_codes(&BSC_MAINNET, &Hardfork::Feynman).unwrap();
+        let res = get_system_contract_codes(&BSC_MAINNET, BscHardfork::Feynman.name()).unwrap();
         assert!(!res.is_empty());
 
         let bytes = res.get(STAKE_HUB_CONTRACT).unwrap();

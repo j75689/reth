@@ -9,13 +9,16 @@
 use reth_chainspec::ChainSpec;
 use reth_evm::{ConfigureEvm, ConfigureEvmEnv};
 use reth_primitives::{
-    revm::{config::revm_spec, env::fill_tx_env},
     revm_primitives::{AnalysisKind, CfgEnvWithHandlerCfg, TxEnv},
-    Address, Head, Header, TransactionSigned, U256,
+    transaction::FillTxEnv,
+    Address, Bytes, Head, Header, TransactionSigned, U256,
 };
 use reth_revm::{inspector_handle_register, Database, Evm, EvmBuilder, GetInspector};
+use revm_primitives::Env;
 
-pub mod execute;
+mod config;
+pub use config::{revm_spec, revm_spec_by_timestamp_after_shanghai};
+mod execute;
 pub use execute::*;
 mod error;
 pub use error::BscBlockExecutionError;
@@ -29,11 +32,22 @@ mod pre_execution;
 pub struct BscEvmConfig;
 
 impl ConfigureEvmEnv for BscEvmConfig {
-    fn fill_tx_env(tx_env: &mut TxEnv, transaction: &TransactionSigned, sender: Address) {
-        fill_tx_env(tx_env, transaction, sender)
+    fn fill_tx_env(&self, tx_env: &mut TxEnv, transaction: &TransactionSigned, sender: Address) {
+        transaction.fill_tx_env(tx_env, sender);
+    }
+
+    fn fill_tx_env_system_contract_call(
+        &self,
+        _env: &mut Env,
+        _caller: Address,
+        _contract: Address,
+        _data: Bytes,
+    ) {
+        // No system contract call on BSC
     }
 
     fn fill_cfg_env(
+        &self,
         cfg_env: &mut CfgEnvWithHandlerCfg,
         chain_spec: &ChainSpec,
         header: &Header,
@@ -41,7 +55,7 @@ impl ConfigureEvmEnv for BscEvmConfig {
     ) {
         let spec_id = revm_spec(
             chain_spec,
-            Head {
+            &Head {
                 number: header.number,
                 timestamp: header.timestamp,
                 difficulty: header.difficulty,
@@ -98,7 +112,7 @@ mod tests {
         let chain_spec = ChainSpec::default();
         let total_difficulty = U256::ZERO;
 
-        BscEvmConfig::fill_cfg_and_block_env(
+        BscEvmConfig::default().fill_cfg_and_block_env(
             &mut cfg_env,
             &mut block_env,
             &chain_spec,

@@ -6,7 +6,7 @@ use futures::Future;
 use reth_primitives::{BlockId, Receipt, SealedBlock, SealedBlockWithSenders, TransactionMeta};
 use reth_provider::{BlockIdReader, BlockReader, BlockReaderIdExt, HeaderProvider};
 use reth_rpc_eth_types::{EthApiError, EthResult, EthStateCache, ReceiptBuilder};
-use reth_rpc_types::{AnyTransactionReceipt, Header, Index, RichBlock};
+use reth_rpc_types::{AnyTransactionReceipt, BlockSidecar, Header, Index, RichBlock};
 use reth_rpc_types_compat::block::{from_block, uncle_block_from_header};
 
 use super::{LoadPendingBlock, LoadReceipt, SpawnBlocking};
@@ -176,6 +176,41 @@ pub trait EthBlocks: LoadBlock {
             let uncle =
                 uncles.into_iter().nth(index).map(|header| uncle_block_from_header(header).into());
             Ok(uncle)
+        }
+    }
+
+    /// Returns the sidecars for the given block id.
+    fn rpc_block_sidecars(
+        &self,
+        block_id: BlockId,
+    ) -> impl Future<Output = EthResult<Option<Vec<BlockSidecar>>>> + Send
+    where
+        Self: LoadPendingBlock + SpawnBlocking,
+    {
+        async move {
+            if block_id.is_pending() {
+                return Ok(None);
+            }
+
+            let sidecars =
+                if let Some(block_hash) = LoadBlock::provider(self).block_hash_for_id(block_id)? {
+                    self.cache().get_sidecars(block_hash).await?
+                } else {
+                    None
+                };
+
+            Ok(sidecars.map(|sidecars| {
+                sidecars
+                    .into_iter()
+                    .map(|item| BlockSidecar {
+                        blob_sidecar: item.blob_transaction_sidecar,
+                        block_number: item.block_number.to(),
+                        block_hash: item.block_hash,
+                        tx_index: item.tx_index,
+                        tx_hash: item.tx_hash,
+                    })
+                    .collect()
+            }))
         }
     }
 }

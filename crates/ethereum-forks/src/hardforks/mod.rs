@@ -6,6 +6,9 @@ pub use ethereum::EthereumHardforks;
 mod optimism;
 pub use optimism::OptimismHardforks;
 
+mod bsc;
+pub use bsc::BscHardforks;
+
 use crate::{ForkCondition, Hardfork};
 use rustc_hash::FxHashMap;
 

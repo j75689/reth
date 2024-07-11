@@ -80,10 +80,9 @@ optimism = [
     "reth-auto-seal-consensus/optimism",
     "reth-rpc-eth-types/optimism"
 ]
-test-utils = ["reth-node-builder/test-utils"]
-
 opbnb = [
     "reth-primitives/opbnb",
     "reth-evm-optimism/opbnb",
     "reth-optimism-payload-builder/opbnb",
 ]
+test-utils = ["reth-node-builder/test-utils"]

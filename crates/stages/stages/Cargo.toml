@@ -89,9 +89,6 @@ pprof = { workspace = true, features = [
 ] }
 
 [features]
-bsc = [
-    "reth-evm-bsc/bsc",
-]
 test-utils = [
     "dep:reth-chainspec",
     "reth-network-p2p/test-utils",
@@ -100,6 +97,9 @@ test-utils = [
     "reth-stages-api/test-utils",
     "dep:reth-testing-utils",
     "dep:tempfile",
+]
+bsc = [
+    "reth-evm-bsc/bsc",
 ]
 
 [[bench]]

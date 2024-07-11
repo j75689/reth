@@ -6,6 +6,9 @@ pub use ethereum::EthereumHardfork;
 mod optimism;
 pub use optimism::OptimismHardfork;
 
+mod bsc;
+pub use bsc::BscHardfork;
+
 mod dev;
 pub use dev::DEV_HARDFORKS;
 

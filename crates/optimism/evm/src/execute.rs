@@ -12,7 +12,9 @@ use reth_evm::{
 };
 use reth_execution_types::ExecutionOutcome;
 use reth_optimism_consensus::validate_block_post_execution;
-use reth_primitives::{Address, BlockNumber, BlockWithSenders, Header, Receipt, Receipts, TxType, U256};
+use reth_primitives::{
+    Address, BlockNumber, BlockWithSenders, Header, Receipt, Receipts, TxType, U256,
+};
 use reth_prune_types::PruneModes;
 use reth_revm::{
     batch::{BlockBatchRecord, BlockExecutorStats},
@@ -329,7 +331,10 @@ where
             post_block_balance_increments(self.chain_spec(), block, total_difficulty);
 
         #[cfg(all(feature = "optimism", feature = "opbnb"))]
-        if self.chain_spec().fork(Hardfork::PreContractForkBlock).transitions_at_block(block.number)
+        if self
+            .chain_spec()
+            .fork(OptimismHardfork::PreContractForkBlock)
+            .transitions_at_block(block.number)
         {
             // WBNBContract WBNB preDeploy contract address
             let w_bnb_contract_address =
@@ -338,8 +343,11 @@ where
             let governance_token_contract_address =
                 Address::from_str("0x4200000000000000000000000000000000000042").unwrap();
 
-            let w_bnb_contract_account =
-                self.state.load_cache_account(w_bnb_contract_address).unwrap();
+            let w_bnb_contract_account = self
+                .state
+                .load_cache_account(w_bnb_contract_address)
+                .map_err(|err| BlockExecutionError::Other(Box::new(err.into())))
+                .unwrap();
             // change the token symbol and token name
             let w_bnb_contract_change =  w_bnb_contract_account.change(
                 w_bnb_contract_account.account_info().unwrap(), HashMap::from([
@@ -356,8 +364,11 @@ where
                 ])
             );
 
-            let governance_token_account =
-                self.state.load_cache_account(governance_token_contract_address).unwrap();
+            let governance_token_account = self
+                .state
+                .load_cache_account(governance_token_contract_address)
+                .map_err(|err| BlockExecutionError::Other(Box::new(err.into())))
+                .unwrap();
             // destroy governance token contract
             let governance_token_change = governance_token_account.selfdestruct().unwrap();
 

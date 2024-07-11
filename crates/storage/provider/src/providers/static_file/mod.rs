@@ -59,9 +59,13 @@ mod tests {
     use super::*;
     use crate::{test_utils::create_test_provider_factory, HeaderProvider};
     use rand::seq::SliceRandom;
-    use reth_db::{CanonicalHeaders, HeaderNumbers, HeaderTerminalDifficulties, Headers};
+    use reth_db::{CanonicalHeaders, HeaderNumbers, HeaderTerminalDifficulties, Headers, Sidecars};
     use reth_db_api::transaction::DbTxMut;
-    use reth_primitives::{static_file::find_fixed_range, B256, U256};
+    use reth_primitives::{
+        static_file::find_fixed_range, BlobSidecar, BlobSidecars, BlobTransactionSidecar, B256,
+        U256,
+    };
+    use reth_storage_api::SidecarsProvider;
     use reth_testing_utils::generators::{self, random_header_range};
 
     #[test]
@@ -129,12 +133,8 @@ mod tests {
                 let header_hash = header.hash();
                 let header = header.unseal();
 
-                let tmp = jar_provider.header_by_number(1u64).unwrap().unwrap();
-                println!("{:?}", tmp.number);
-
                 // Compare Header
                 assert_eq!(header, db_provider.header(&header_hash).unwrap().unwrap());
-                assert_eq!(header, jar_provider.header_by_number(header.number).unwrap().unwrap());
                 assert_eq!(header, jar_provider.header_by_number(header.number).unwrap().unwrap());
 
                 // Compare HeaderTerminalDifficulties
@@ -151,12 +151,6 @@ mod tests {
         // Ranges
         let row_count = 100u64;
         let range = 0..=(row_count - 1);
-        let segment_header = SegmentHeader::new(
-            range.clone().into(),
-            Some(range.clone().into()),
-            Some(range.clone().into()),
-            StaticFileSegment::Sidecars,
-        );
 
         // Data sources
         let factory = create_test_provider_factory();
@@ -169,7 +163,7 @@ mod tests {
         let mut provider_rw = factory.provider_rw().unwrap();
         let tx = provider_rw.tx_mut();
         let mut sidecars_set = Vec::with_capacity(100);
-        for i in 0..100 {
+        for i in range {
             let sidecars = BlobSidecars::new(vec![BlobSidecar {
                 blob_transaction_sidecar: BlobTransactionSidecar {
                     blobs: vec![],
@@ -194,58 +188,36 @@ mod tests {
 
         // Create StaticFile
         {
-            let with_compression = true;
-            let with_filter = true;
+            let manager = StaticFileProvider::read_write(static_files_path.path()).unwrap();
+            let mut writer = manager.latest_writer(StaticFileSegment::Sidecars).unwrap();
 
-            let mut nippy_jar = NippyJar::new(2, static_file.as_path(), segment_header);
-
-            if with_compression {
-                nippy_jar = nippy_jar.with_zstd(false, 0);
+            for sidecars in sidecars_set.clone() {
+                let block_number = sidecars[0].block_number.to();
+                let hash = sidecars[0].block_hash;
+                writer.append_sidecars(sidecars, block_number, hash).unwrap();
             }
-
-            if with_filter {
-                nippy_jar = nippy_jar.with_cuckoo_filter(row_count as usize + 10).with_fmph();
-            }
-
-            let provider = factory.provider().unwrap();
-            let tx = provider.tx_ref();
-
-            // Hacky type inference. TODO fix
-            let mut none_vec = Some(vec![vec![vec![0u8]].into_iter()]);
-            let _ = none_vec.take();
-
-            // Generate list of hashes for filters & PHF
-            let mut cursor = tx.cursor_read::<RawTable<CanonicalHeaders>>().unwrap();
-            let hashes = cursor
-                .walk(None)
-                .unwrap()
-                .map(|row| row.map(|(_key, value)| value.into_value()).map_err(|e| e.into()));
-
-            create_static_file_T1_T2::<Sidecars, CanonicalHeaders, BlockNumber, SegmentHeader>(
-                tx,
-                range,
-                None,
-                none_vec,
-                Some(hashes),
-                row_count as usize,
-                nippy_jar,
-            )
-            .unwrap();
+            writer.commit().unwrap();
         }
 
         // Use providers to query sidecars data and compare if it matches
         {
             let db_provider = factory.provider().unwrap();
-            let manager =
-                StaticFileProvider::read_write(static_files_path.path()).unwrap().with_filters();
+            let manager = StaticFileProvider::read_write(static_files_path.path()).unwrap();
             let jar_provider = manager
                 .get_segment_provider_from_block(StaticFileSegment::Sidecars, 0, Some(&static_file))
                 .unwrap();
 
-            for i in 0..100 {
-                let hash = sidecars_set[i][0].block_hash;
-                assert_eq!(sidecars_set[i], db_provider.sidecars(&hash).unwrap().unwrap());
-                assert_eq!(sidecars_set[i], jar_provider.sidecars(&hash).unwrap().unwrap());
+            // Shuffled for chaos.
+            sidecars_set.shuffle(&mut generators::rng());
+
+            for sidecars in sidecars_set {
+                let hash = sidecars[0].block_hash;
+                let block_number = sidecars[0].block_number.to();
+                assert_eq!(sidecars, db_provider.sidecars(&hash).unwrap().unwrap());
+                assert_eq!(
+                    sidecars,
+                    jar_provider.sidecars_by_number(block_number).unwrap().unwrap()
+                );
             }
         }
     }

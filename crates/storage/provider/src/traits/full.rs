@@ -2,8 +2,8 @@
 
 use crate::{
     AccountReader, BlockReaderIdExt, CanonStateSubscriptions, ChainSpecProvider, ChangeSetReader,
-    DatabaseProviderFactory, EvmEnvProvider, HeaderProvider, StageCheckpointReader,
-    StateProviderFactory, StaticFileProviderFactory, TransactionsProvider,
+    DatabaseProviderFactory, EvmEnvProvider, HeaderProvider, ParliaSnapshotReader,
+    StageCheckpointReader, StateProviderFactory, StaticFileProviderFactory, TransactionsProvider,
 };
 use reth_db_api::database::Database;
 

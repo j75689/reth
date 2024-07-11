@@ -8,6 +8,9 @@ pub use ethereum::*;
 mod optimism;
 pub use optimism::*;
 
+mod bsc;
+pub use bsc::*;
+
 /// Returns parsed mainnet nodes
 pub fn mainnet_nodes() -> Vec<NodeRecord> {
     parse_nodes(&MAINNET_BOOTNODES[..])
@@ -41,6 +44,26 @@ pub fn base_nodes() -> Vec<NodeRecord> {
 /// Returns parsed op-stack base testnet nodes
 pub fn base_testnet_nodes() -> Vec<NodeRecord> {
     parse_nodes(OP_TESTNET_BOOTNODES)
+}
+
+/// Returns parsed opbnb testnet nodes
+pub fn opbnb_testnet_nodes() -> Vec<NodeRecord> {
+    parse_nodes(OPBNB_TESTNET_BOOTNODES)
+}
+
+/// Returns parsed opbnb mainnet nodes
+pub fn opbnb_mainnet_nodes() -> Vec<NodeRecord> {
+    parse_nodes(OPBNB_MAINNET_BOOTNODES)
+}
+
+/// Returns parsed bsc mainnet nodes
+pub fn bsc_mainnet_nodes() -> Vec<NodeRecord> {
+    parse_nodes(BSC_MAINNET_BOOTNODES)
+}
+
+/// Returns parsed bsc mainnet nodes
+pub fn bsc_testnet_nodes() -> Vec<NodeRecord> {
+    parse_nodes(BSC_TESTNET_BOOTNODES)
 }
 
 /// Parses all the nodes

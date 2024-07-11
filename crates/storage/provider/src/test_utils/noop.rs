@@ -14,8 +14,7 @@ use reth_primitives::{
 };
 use reth_prune_types::{PruneCheckpoint, PruneSegment};
 use reth_stages_types::{StageCheckpoint, StageId};
-use reth_storage_api::SidecarsProvider;
-use reth_storage_api::StateProofProvider;
+use reth_storage_api::{SidecarsProvider, StateProofProvider};
 use reth_storage_errors::provider::ProviderResult;
 use reth_trie::{updates::TrieUpdates, AccountProof};
 use revm::{
@@ -29,10 +28,10 @@ use crate::{
     traits::{BlockSource, ReceiptProvider},
     AccountReader, BlockHashReader, BlockIdReader, BlockNumReader, BlockReader, BlockReaderIdExt,
     CanonStateNotifications, CanonStateSubscriptions, ChainSpecProvider, ChangeSetReader,
-    EvmEnvProvider, HeaderProvider, PruneCheckpointReader, ReceiptProviderIdExt, RequestsProvider,
-    StageCheckpointReader, StateProvider, StateProviderBox, StateProviderFactory,
-    StateRootProvider, StaticFileProviderFactory, TransactionVariant, TransactionsProvider,
-    WithdrawalsProvider,
+    EvmEnvProvider, HeaderProvider, ParliaSnapshotReader, PruneCheckpointReader,
+    ReceiptProviderIdExt, RequestsProvider, StageCheckpointReader, StateProvider, StateProviderBox,
+    StateProviderFactory, StateRootProvider, StaticFileProviderFactory, TransactionVariant,
+    TransactionsProvider, WithdrawalsProvider,
 };
 
 /// Supports various api interfaces for testing purposes.

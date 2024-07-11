@@ -11,10 +11,14 @@ pub fn revm_spec_by_timestamp_after_bedrock(
 ) -> revm_primitives::SpecId {
     if chain_spec.fork(OptimismHardfork::Fjord).active_at_timestamp(timestamp) {
         revm_primitives::FJORD
+    } else if chain_spec.fork(OptimismHardfork::Haber).active_at_timestamp(timestamp) {
+        revm_primitives::HABER
     } else if chain_spec.fork(OptimismHardfork::Ecotone).active_at_timestamp(timestamp) {
         revm_primitives::ECOTONE
     } else if chain_spec.fork(OptimismHardfork::Canyon).active_at_timestamp(timestamp) {
         revm_primitives::CANYON
+    } else if chain_spec.fork(OptimismHardfork::Fermat).active_at_timestamp(timestamp) {
+        revm_primitives::FERMAT
     } else if chain_spec.fork(OptimismHardfork::Regolith).active_at_timestamp(timestamp) {
         revm_primitives::REGOLITH
     } else {
@@ -26,10 +30,14 @@ pub fn revm_spec_by_timestamp_after_bedrock(
 pub fn revm_spec(chain_spec: &ChainSpec, block: &Head) -> revm_primitives::SpecId {
     if chain_spec.fork(OptimismHardfork::Fjord).active_at_head(block) {
         revm_primitives::FJORD
+    } else if chain_spec.fork(OptimismHardfork::Haber).active_at_head(block) {
+        revm_primitives::HABER
     } else if chain_spec.fork(OptimismHardfork::Ecotone).active_at_head(block) {
         revm_primitives::ECOTONE
     } else if chain_spec.fork(OptimismHardfork::Canyon).active_at_head(block) {
         revm_primitives::CANYON
+    } else if chain_spec.fork(OptimismHardfork::Fermat).active_at_head(block) {
+        revm_primitives::FERMAT
     } else if chain_spec.fork(OptimismHardfork::Regolith).active_at_head(block) {
         revm_primitives::REGOLITH
     } else if chain_spec.fork(OptimismHardfork::Bedrock).active_at_head(block) {

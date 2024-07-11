@@ -18,10 +18,16 @@ hardfork!(
         Bedrock,
         /// Regolith: <https://github.com/ethereum-optimism/specs/blob/main/specs/protocol/superchain-upgrades.md#regolith>.
         Regolith,
+        /// `Fermat`
+        Fermat,
         /// <https://github.com/ethereum-optimism/specs/blob/main/specs/protocol/superchain-upgrades.md#canyon>.
         Canyon,
         /// Ecotone: <https://github.com/ethereum-optimism/specs/blob/main/specs/protocol/superchain-upgrades.md#ecotone>.
         Ecotone,
+        /// `PreContractForkBlock`
+        PreContractForkBlock,
+        /// `Haber`
+        Haber,
         /// Fjord: <https://github.com/ethereum-optimism/specs/blob/main/specs/protocol/superchain-upgrades.md#fjord>
         Fjord,
     }
@@ -36,6 +42,12 @@ impl OptimismHardfork {
         if chain == Chain::base_mainnet() {
             return Self::base_mainnet_activation_block(fork)
         }
+        if chain == Chain::opbnb_mainnet() {
+            return Self::opbnb_mainnet_activation_block(fork)
+        }
+        if chain == Chain::opbnb_testnet() {
+            return Self::opbnb_testnet_activation_block(fork)
+        }
 
         None
     }
@@ -47,6 +59,12 @@ impl OptimismHardfork {
         }
         if chain == Chain::base_mainnet() {
             return Self::base_mainnet_activation_timestamp(fork)
+        }
+        if chain == Chain::opbnb_mainnet() {
+            return Self::opbnb_mainnet_activation_timestamp(fork)
+        }
+        if chain == Chain::opbnb_testnet() {
+            return Self::opbnb_testnet_activation_timestamp(fork)
         }
 
         None
@@ -81,6 +99,7 @@ impl OptimismHardfork {
                 Self::Canyon => Some(2106456),
                 Self::Ecotone => Some(6383256),
                 Self::Fjord => Some(10615056),
+                _ => None,
             },
         )
     }
@@ -118,6 +137,63 @@ impl OptimismHardfork {
         )
     }
 
+    /// Retrieves the activation block for the specified hardfork on the opBNB mainnet.
+    pub fn opbnb_mainnet_activation_block<H: Hardfork>(fork: H) -> Option<u64> {
+        match_hardfork(
+            fork,
+            |fork| match fork {
+                EthereumHardfork::Frontier |
+                EthereumHardfork::Homestead |
+                EthereumHardfork::Tangerine |
+                EthereumHardfork::SpuriousDragon |
+                EthereumHardfork::Byzantium |
+                EthereumHardfork::Constantinople |
+                EthereumHardfork::Petersburg |
+                EthereumHardfork::Istanbul |
+                EthereumHardfork::MuirGlacier |
+                EthereumHardfork::Berlin |
+                EthereumHardfork::London |
+                EthereumHardfork::ArrowGlacier |
+                EthereumHardfork::GrayGlacier |
+                EthereumHardfork::Paris => Some(0),
+                _ => None,
+            },
+            |fork| match fork {
+                Self::Bedrock => Some(0),
+                _ => None,
+            },
+        )
+    }
+
+    /// Retrieves the activation block for the specified hardfork on the opBNB testnet.
+    pub fn opbnb_testnet_activation_block<H: Hardfork>(fork: H) -> Option<u64> {
+        match_hardfork(
+            fork,
+            |fork| match fork {
+                EthereumHardfork::Frontier |
+                EthereumHardfork::Homestead |
+                EthereumHardfork::Tangerine |
+                EthereumHardfork::SpuriousDragon |
+                EthereumHardfork::Byzantium |
+                EthereumHardfork::Constantinople |
+                EthereumHardfork::Petersburg |
+                EthereumHardfork::Istanbul |
+                EthereumHardfork::MuirGlacier |
+                EthereumHardfork::Berlin |
+                EthereumHardfork::London |
+                EthereumHardfork::ArrowGlacier |
+                EthereumHardfork::GrayGlacier |
+                EthereumHardfork::Paris => Some(0),
+                _ => None,
+            },
+            |fork| match fork {
+                Self::Bedrock => Some(0),
+                Self::PreContractForkBlock => Some(5805494),
+                _ => None,
+            },
+        )
+    }
+
     /// Retrieves the activation timestamp for the specified hardfork on the Base Sepolia testnet.
     pub fn base_sepolia_activation_timestamp<H: Hardfork>(fork: H) -> Option<u64> {
         match_hardfork(
@@ -147,6 +223,7 @@ impl OptimismHardfork {
                 Self::Canyon => Some(1699981200),
                 Self::Ecotone => Some(1708534800),
                 Self::Fjord => Some(1716998400),
+                _ => None,
             },
         )
     }
@@ -180,6 +257,47 @@ impl OptimismHardfork {
                 Self::Canyon => Some(1704992401),
                 Self::Ecotone => Some(1710374401),
                 Self::Fjord => Some(1720627201),
+                _ => None,
+            },
+        )
+    }
+
+    /// Retrieves the activation timestamp for the specified hardfork on the opBNB mainnet.
+    pub fn opbnb_mainnet_activation_timestamp<H: Hardfork>(fork: H) -> Option<u64> {
+        match_hardfork(
+            fork,
+            |fork| match fork {
+                EthereumHardfork::Shanghai => Some(1718870400),
+                EthereumHardfork::Cancun => Some(1718871600),
+                _ => None,
+            },
+            |fork| match fork {
+                Self::Regolith => Some(0),
+                Self::Fermat => Some(1701151200),
+                Self::Canyon => Some(1718870400),
+                Self::Ecotone => Some(1718871600),
+                Self::Haber => Some(1718872200),
+                _ => None,
+            },
+        )
+    }
+
+    /// Retrieves the activation timestamp for the specified hardfork on the opBNB testnet.
+    pub fn opbnb_testnet_activation_timestamp<H: Hardfork>(fork: H) -> Option<u64> {
+        match_hardfork(
+            fork,
+            |fork| match fork {
+                EthereumHardfork::Shanghai => Some(1715753400),
+                EthereumHardfork::Cancun => Some(1715754600),
+                _ => None,
+            },
+            |fork| match fork {
+                Self::Regolith => Some(0),
+                Self::Fermat => Some(1698991506),
+                Self::Canyon => Some(1715753400),
+                Self::Ecotone => Some(1715754600),
+                Self::Haber => Some(1717048800),
+                _ => None,
             },
         )
     }
@@ -301,6 +419,69 @@ impl OptimismHardfork {
             (EthereumHardfork::Cancun.boxed(), ForkCondition::Timestamp(1710374401)),
             (Self::Ecotone.boxed(), ForkCondition::Timestamp(1710374401)),
             (Self::Fjord.boxed(), ForkCondition::Timestamp(1720627201)),
+        ])
+    }
+
+    /// opBNB mainnet list of hardforks.
+    pub fn opbnb_mainnet() -> ChainHardforks {
+        ChainHardforks::new(vec![
+            (EthereumHardfork::Frontier.boxed(), ForkCondition::Block(0)),
+            (EthereumHardfork::Homestead.boxed(), ForkCondition::Block(0)),
+            (EthereumHardfork::Tangerine.boxed(), ForkCondition::Block(0)),
+            (EthereumHardfork::SpuriousDragon.boxed(), ForkCondition::Block(0)),
+            (EthereumHardfork::Byzantium.boxed(), ForkCondition::Block(0)),
+            (EthereumHardfork::Constantinople.boxed(), ForkCondition::Block(0)),
+            (EthereumHardfork::Petersburg.boxed(), ForkCondition::Block(0)),
+            (EthereumHardfork::Istanbul.boxed(), ForkCondition::Block(0)),
+            (EthereumHardfork::MuirGlacier.boxed(), ForkCondition::Block(0)),
+            (EthereumHardfork::Berlin.boxed(), ForkCondition::Block(0)),
+            (EthereumHardfork::London.boxed(), ForkCondition::Block(0)),
+            (EthereumHardfork::ArrowGlacier.boxed(), ForkCondition::Block(0)),
+            (EthereumHardfork::GrayGlacier.boxed(), ForkCondition::Block(0)),
+            (
+                EthereumHardfork::Paris.boxed(),
+                ForkCondition::TTD { fork_block: Some(0), total_difficulty: U256::ZERO },
+            ),
+            (Self::Bedrock.boxed(), ForkCondition::Block(0)),
+            (Self::Regolith.boxed(), ForkCondition::Timestamp(0)),
+            (Self::Fermat.boxed(), ForkCondition::Timestamp(1701151200)),
+            (EthereumHardfork::Shanghai.boxed(), ForkCondition::Timestamp(1718870400)),
+            (Self::Canyon.boxed(), ForkCondition::Timestamp(1718870400)),
+            (EthereumHardfork::Cancun.boxed(), ForkCondition::Timestamp(1718871600)),
+            (Self::Ecotone.boxed(), ForkCondition::Timestamp(1718871600)),
+            (Self::Haber.boxed(), ForkCondition::Timestamp(1718872200)),
+        ])
+    }
+
+    /// opBNB testnet list of hardforks.
+    pub fn opbnb_testnet() -> ChainHardforks {
+        ChainHardforks::new(vec![
+            (EthereumHardfork::Frontier.boxed(), ForkCondition::Block(0)),
+            (EthereumHardfork::Homestead.boxed(), ForkCondition::Block(0)),
+            (EthereumHardfork::Tangerine.boxed(), ForkCondition::Block(0)),
+            (EthereumHardfork::SpuriousDragon.boxed(), ForkCondition::Block(0)),
+            (EthereumHardfork::Byzantium.boxed(), ForkCondition::Block(0)),
+            (EthereumHardfork::Constantinople.boxed(), ForkCondition::Block(0)),
+            (EthereumHardfork::Petersburg.boxed(), ForkCondition::Block(0)),
+            (EthereumHardfork::Istanbul.boxed(), ForkCondition::Block(0)),
+            (EthereumHardfork::MuirGlacier.boxed(), ForkCondition::Block(0)),
+            (EthereumHardfork::Berlin.boxed(), ForkCondition::Block(0)),
+            (EthereumHardfork::London.boxed(), ForkCondition::Block(0)),
+            (EthereumHardfork::ArrowGlacier.boxed(), ForkCondition::Block(0)),
+            (EthereumHardfork::GrayGlacier.boxed(), ForkCondition::Block(0)),
+            (
+                EthereumHardfork::Paris.boxed(),
+                ForkCondition::TTD { fork_block: Some(0), total_difficulty: U256::ZERO },
+            ),
+            (Self::Bedrock.boxed(), ForkCondition::Block(0)),
+            (Self::Regolith.boxed(), ForkCondition::Timestamp(0)),
+            (Self::PreContractForkBlock.boxed(), ForkCondition::Block(5805494)),
+            (Self::Fermat.boxed(), ForkCondition::Timestamp(1698991506)),
+            (EthereumHardfork::Shanghai.boxed(), ForkCondition::Timestamp(1715753400)),
+            (Self::Canyon.boxed(), ForkCondition::Timestamp(1715753400)),
+            (EthereumHardfork::Cancun.boxed(), ForkCondition::Timestamp(1715754600)),
+            (Self::Ecotone.boxed(), ForkCondition::Timestamp(1715754600)),
+            (Self::Haber.boxed(), ForkCondition::Timestamp(1717048800)),
         ])
     }
 }

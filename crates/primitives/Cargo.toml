@@ -18,8 +18,7 @@ reth-codecs.workspace = true
 reth-ethereum-forks.workspace = true
 reth-static-file-types.workspace = true
 reth-trie-common.workspace = true
-reth-chainspec.workspace = true
-revm.workspace = true
+revm = { workspace = true, optional = true }
 revm-primitives = { workspace = true, features = ["serde"] }
 reth-chainspec = { workspace = true, optional = true }
 
@@ -117,6 +116,7 @@ opbnb = [
     "reth-chainspec/opbnb",
     "reth-ethereum-forks/opbnb",
     "revm/opbnb",
+    "dep:revm"
 ]
 bsc = [
     "reth-primitives-traits/bsc",
@@ -126,6 +126,7 @@ bsc = [
     "dep:alloy-chains",
     "dep:include_dir",
     "dep:lazy_static",
+    "dep:revm",
     "dep:thiserror"
 ]
 

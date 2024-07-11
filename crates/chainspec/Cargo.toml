@@ -48,10 +48,10 @@ rand.workspace = true
 op-alloy-rpc-types.workspace = true
 
 [features]
+default = ["std"]
 bsc = [
     "reth-ethereum-forks/bsc"
 ]
-default = ["std"]
 optimism = [
     "reth-ethereum-forks/optimism",
     "serde",

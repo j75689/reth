@@ -29,15 +29,18 @@ use crate::constants::optimism::{
     OP_CANYON_BASE_FEE_PARAMS, OP_SEPOLIA_BASE_FEE_PARAMS, OP_SEPOLIA_CANYON_BASE_FEE_PARAMS,
 };
 pub use alloy_eips::eip1559::BaseFeeParams;
+#[cfg(feature = "bsc")]
+use reth_ethereum_forks::BscHardfork;
 #[cfg(feature = "optimism")]
 use reth_ethereum_forks::OptimismHardfork;
 use reth_network_peers::{
     base_nodes, base_testnet_nodes, holesky_nodes, mainnet_nodes, op_nodes, op_testnet_nodes,
     sepolia_nodes,
 };
-
 #[cfg(feature = "bsc")]
-pub(crate) use crate::net::{bsc_mainnet_nodes, bsc_testnet_nodes};
+use reth_network_peers::{bsc_mainnet_nodes, bsc_testnet_nodes};
+#[cfg(feature = "optimism")]
+use reth_network_peers::{opbnb_mainnet_nodes, opbnb_testnet_nodes};
 
 /// The BSC mainnet spec
 #[cfg(feature = "bsc")]
@@ -50,38 +53,7 @@ pub static BSC_MAINNET: Lazy<Arc<ChainSpec>> = Lazy::new(|| {
             "0d21840abff46b96c84b2ac9e10e4f5cdaeb5693cb665db62a2f3b02d2d57b5b"
         )),
         paris_block_and_final_difficulty: Some((0, U256::from(0))),
-        hardforks: BTreeMap::from([
-            (Hardfork::Frontier, ForkCondition::Block(0)),
-            (Hardfork::Homestead, ForkCondition::Block(0)),
-            (Hardfork::Tangerine, ForkCondition::Block(0)),
-            (Hardfork::SpuriousDragon, ForkCondition::Block(0)),
-            (Hardfork::Byzantium, ForkCondition::Block(0)),
-            (Hardfork::Constantinople, ForkCondition::Block(0)),
-            (Hardfork::Petersburg, ForkCondition::Block(0)),
-            (Hardfork::Istanbul, ForkCondition::Block(0)),
-            (Hardfork::MuirGlacier, ForkCondition::Block(0)),
-            (Hardfork::Ramanujan, ForkCondition::Block(0)),
-            (Hardfork::Niels, ForkCondition::Block(0)),
-            (Hardfork::MirrorSync, ForkCondition::Block(5184000)),
-            (Hardfork::Bruno, ForkCondition::Block(13082000)),
-            (Hardfork::Euler, ForkCondition::Block(18907621)),
-            (Hardfork::Nano, ForkCondition::Block(21962149)),
-            (Hardfork::Moran, ForkCondition::Block(22107423)),
-            (Hardfork::Gibbs, ForkCondition::Block(23846001)),
-            (Hardfork::Planck, ForkCondition::Block(27281024)),
-            (Hardfork::Luban, ForkCondition::Block(29020050)),
-            (Hardfork::Plato, ForkCondition::Block(30720096)),
-            (Hardfork::Berlin, ForkCondition::Block(31302048)),
-            (Hardfork::London, ForkCondition::Block(31302048)),
-            (Hardfork::Hertz, ForkCondition::Block(31302048)),
-            (Hardfork::HertzFix, ForkCondition::Block(34140700)),
-            (Hardfork::Shanghai, ForkCondition::Timestamp(1705996800)),
-            (Hardfork::Kepler, ForkCondition::Timestamp(1705996800)),
-            (Hardfork::Feynman, ForkCondition::Timestamp(1713419340)),
-            (Hardfork::FeynmanFix, ForkCondition::Timestamp(1713419340)),
-            (Hardfork::Cancun, ForkCondition::Timestamp(1718863500)),
-            (Hardfork::Haber, ForkCondition::Timestamp(1718863500)),
-        ]),
+        hardforks: BscHardfork::bsc_mainnet(),
         deposit_contract: None,
         base_fee_params: BaseFeeParamsKind::Constant(BaseFeeParams::new(1, 1)),
         prune_delete_limit: 3500,
@@ -100,48 +72,13 @@ pub static BSC_TESTNET: Lazy<Arc<ChainSpec>> = Lazy::new(|| {
             "6d3c66c5357ec91d5c43af47e234a939b22557cbb552dc45bebbceeed90fbe34"
         )),
         paris_block_and_final_difficulty: Some((0, U256::from(0))),
-        hardforks: BTreeMap::from([
-            (Hardfork::Frontier, ForkCondition::Block(0)),
-            (Hardfork::Homestead, ForkCondition::Block(0)),
-            (Hardfork::Tangerine, ForkCondition::Block(0)),
-            (Hardfork::SpuriousDragon, ForkCondition::Block(0)),
-            (Hardfork::Byzantium, ForkCondition::Block(0)),
-            (Hardfork::Constantinople, ForkCondition::Block(0)),
-            (Hardfork::Petersburg, ForkCondition::Block(0)),
-            (Hardfork::Istanbul, ForkCondition::Block(0)),
-            (Hardfork::MuirGlacier, ForkCondition::Block(0)),
-            (Hardfork::Ramanujan, ForkCondition::Block(1010000)),
-            (Hardfork::Niels, ForkCondition::Block(1014369)),
-            (Hardfork::MirrorSync, ForkCondition::Block(5582500)),
-            (Hardfork::Bruno, ForkCondition::Block(13837000)),
-            (Hardfork::Euler, ForkCondition::Block(19203503)),
-            (Hardfork::Gibbs, ForkCondition::Block(22800220)),
-            (Hardfork::Nano, ForkCondition::Block(23482428)),
-            (Hardfork::Moran, ForkCondition::Block(23603940)),
-            (Hardfork::Planck, ForkCondition::Block(28196022)),
-            (Hardfork::Luban, ForkCondition::Block(29295050)),
-            (Hardfork::Plato, ForkCondition::Block(29861024)),
-            (Hardfork::Berlin, ForkCondition::Block(31103030)),
-            (Hardfork::London, ForkCondition::Block(31103030)),
-            (Hardfork::Hertz, ForkCondition::Block(31103030)),
-            (Hardfork::HertzFix, ForkCondition::Block(35682300)),
-            (Hardfork::Shanghai, ForkCondition::Timestamp(1702972800)),
-            (Hardfork::Kepler, ForkCondition::Timestamp(1702972800)),
-            (Hardfork::Feynman, ForkCondition::Timestamp(1710136800)),
-            (Hardfork::FeynmanFix, ForkCondition::Timestamp(1711342800)),
-            (Hardfork::Cancun, ForkCondition::Timestamp(1713330442)),
-            (Hardfork::Haber, ForkCondition::Timestamp(1716962820)),
-            (Hardfork::HaberFix, ForkCondition::Timestamp(1719986788)),
-        ]),
+        hardforks: BscHardfork::bsc_testnet(),
         deposit_contract: None,
         base_fee_params: BaseFeeParamsKind::Constant(BaseFeeParams::new(1, 1)),
         prune_delete_limit: 3500,
     }
     .into()
 });
-
-#[cfg(all(feature = "optimism", feature = "opbnb"))]
-pub(crate) use crate::net::{opbnb_mainnet_nodes, opbnb_testnet_nodes};
 
 /// The Ethereum mainnet spec
 pub static MAINNET: Lazy<Arc<ChainSpec>> = Lazy::new(|| {
@@ -342,36 +279,9 @@ pub static OPBNB_MAINNET: Lazy<Arc<ChainSpec>> = Lazy::new(|| {
             "4dd61178c8b0f01670c231597e7bcb368e84545acd46d940a896d6a791dd6df4"
         )),
         paris_block_and_final_difficulty: Some((0, U256::from(0))),
-        hardforks: BTreeMap::from([
-            (Hardfork::Frontier, ForkCondition::Block(0)),
-            (Hardfork::Homestead, ForkCondition::Block(0)),
-            (Hardfork::Tangerine, ForkCondition::Block(0)),
-            (Hardfork::SpuriousDragon, ForkCondition::Block(0)),
-            (Hardfork::Byzantium, ForkCondition::Block(0)),
-            (Hardfork::Constantinople, ForkCondition::Block(0)),
-            (Hardfork::Petersburg, ForkCondition::Block(0)),
-            (Hardfork::Istanbul, ForkCondition::Block(0)),
-            (Hardfork::MuirGlacier, ForkCondition::Block(0)),
-            (Hardfork::Berlin, ForkCondition::Block(0)),
-            (Hardfork::London, ForkCondition::Block(0)),
-            (Hardfork::ArrowGlacier, ForkCondition::Block(0)),
-            (Hardfork::GrayGlacier, ForkCondition::Block(0)),
-            (
-                Hardfork::Paris,
-                ForkCondition::TTD { fork_block: Some(0), total_difficulty: U256::from(0) },
-            ),
-            (Hardfork::Bedrock, ForkCondition::Block(0)),
-            (Hardfork::Regolith, ForkCondition::Timestamp(0)),
-            (Hardfork::Fermat, ForkCondition::Timestamp(1701151200)),
-            (Hardfork::Shanghai, ForkCondition::Timestamp(1718870400)), /* Jun-20-2024 08:00 AM
-                                                                         * +UTC */
-            (Hardfork::Canyon, ForkCondition::Timestamp(1718870400)), // Jun-20-2024 08:00 AM +UTC
-            (Hardfork::Cancun, ForkCondition::Timestamp(1718871600)), // Jun-20-2024 08:20 AM +UTC
-            (Hardfork::Ecotone, ForkCondition::Timestamp(1718871600)), // Jun-20-2024 08:20 AM +UTC
-            (Hardfork::Haber, ForkCondition::Timestamp(1718872200)),  // Jun-20-2024 08:30 AM +UTC
-        ]),
+        hardforks: OptimismHardfork::opbnb_mainnet(),
         base_fee_params: BaseFeeParamsKind::Variable(
-            vec![(Hardfork::London, BaseFeeParams::ethereum())].into(),
+            vec![(EthereumHardfork::London.boxed(), BaseFeeParams::ethereum())].into(),
         ),
         prune_delete_limit: 0,
         ..Default::default()
@@ -390,36 +300,9 @@ pub static OPBNB_TESTNET: Lazy<Arc<ChainSpec>> = Lazy::new(|| {
             "51fa57729dfb1c27542c21b06cb72a0459c57440ceb43a465dae1307cd04fe80"
         )),
         paris_block_and_final_difficulty: Some((0, U256::from(0))),
-        hardforks: BTreeMap::from([
-            (Hardfork::Frontier, ForkCondition::Block(0)),
-            (Hardfork::Homestead, ForkCondition::Block(0)),
-            (Hardfork::Tangerine, ForkCondition::Block(0)),
-            (Hardfork::SpuriousDragon, ForkCondition::Block(0)),
-            (Hardfork::Byzantium, ForkCondition::Block(0)),
-            (Hardfork::Constantinople, ForkCondition::Block(0)),
-            (Hardfork::Petersburg, ForkCondition::Block(0)),
-            (Hardfork::Istanbul, ForkCondition::Block(0)),
-            (Hardfork::MuirGlacier, ForkCondition::Block(0)),
-            (Hardfork::Berlin, ForkCondition::Block(0)),
-            (Hardfork::London, ForkCondition::Block(0)),
-            (Hardfork::ArrowGlacier, ForkCondition::Block(0)),
-            (Hardfork::GrayGlacier, ForkCondition::Block(0)),
-            (
-                Hardfork::Paris,
-                ForkCondition::TTD { fork_block: Some(0), total_difficulty: U256::from(0) },
-            ),
-            (Hardfork::Bedrock, ForkCondition::Block(0)),
-            (Hardfork::Regolith, ForkCondition::Timestamp(0)),
-            (Hardfork::PreContractForkBlock, ForkCondition::Block(5805494)),
-            (Hardfork::Fermat, ForkCondition::Timestamp(1698991506)),
-            (Hardfork::Shanghai, ForkCondition::Timestamp(1715753400)),
-            (Hardfork::Canyon, ForkCondition::Timestamp(1715753400)),
-            (Hardfork::Cancun, ForkCondition::Timestamp(1715754600)),
-            (Hardfork::Ecotone, ForkCondition::Timestamp(1715754600)),
-            (Hardfork::Haber, ForkCondition::Timestamp(1717048800)),
-        ]),
+        hardforks: OptimismHardfork::opbnb_testnet(),
         base_fee_params: BaseFeeParamsKind::Variable(
-            vec![(Hardfork::London, BaseFeeParams::ethereum())].into(),
+            vec![(EthereumHardfork::London.boxed(), BaseFeeParams::ethereum())].into(),
         ),
         prune_delete_limit: 0,
         ..Default::default()
@@ -764,151 +647,6 @@ impl ChainSpec {
     #[inline]
     pub fn latest_fork_id(&self) -> ForkId {
         self.hardfork_fork_id(self.hardforks.last().unwrap().0).unwrap()
-    }
-
-    /// Convenience method to check if [`Hardfork::Ramanujan`] is firstly active at a given block.
-    #[cfg(feature = "bsc")]
-    #[inline]
-    pub fn is_on_ramanujan_at_block(&self, block_number: u64) -> bool {
-        self.fork(Hardfork::Ramanujan).transitions_at_block(block_number)
-    }
-
-    /// Convenience method to check if [`Hardfork::Ramanujan`] is active at a given block.
-    #[cfg(feature = "bsc")]
-    #[inline]
-    pub fn is_ramanujan_active_at_block(&self, block_number: u64) -> bool {
-        self.is_fork_active_at_block(Hardfork::Ramanujan, block_number)
-    }
-
-    /// Convenience method to check if [`Hardfork::Euler`] is firstly active at a given block.
-    #[cfg(feature = "bsc")]
-    #[inline]
-    pub fn is_on_euler_at_block(&self, block_number: u64) -> bool {
-        self.fork(Hardfork::Euler).transitions_at_block(block_number)
-    }
-
-    /// Convenience method to check if [`Hardfork::Euler`] is active at a given block.
-    #[cfg(feature = "bsc")]
-    #[inline]
-    pub fn is_euler_active_at_block(&self, block_number: u64) -> bool {
-        self.is_fork_active_at_block(Hardfork::Euler, block_number)
-    }
-
-    /// Convenience method to check if [`Hardfork::Planck`] is firstly active at a given block.
-    #[cfg(feature = "bsc")]
-    #[inline]
-    pub fn is_on_planck_at_block(&self, block_number: u64) -> bool {
-        self.fork(Hardfork::Planck).transitions_at_block(block_number)
-    }
-
-    /// Convenience method to check if [`Hardfork::Planck`] is active at a given block.
-    #[cfg(feature = "bsc")]
-    #[inline]
-    pub fn is_planck_active_at_block(&self, block_number: u64) -> bool {
-        self.is_fork_active_at_block(Hardfork::Planck, block_number)
-    }
-
-    /// Convenience method to check if [`Hardfork::Luban`] is firstly active at a given block.
-    #[cfg(feature = "bsc")]
-    #[inline]
-    pub fn is_on_luban_at_block(&self, block_number: u64) -> bool {
-        self.fork(Hardfork::Luban).transitions_at_block(block_number)
-    }
-
-    /// Convenience method to check if [`Hardfork::Luban`] is active at a given block.
-    #[cfg(feature = "bsc")]
-    #[inline]
-    pub fn is_luban_active_at_block(&self, block_number: u64) -> bool {
-        self.is_fork_active_at_block(Hardfork::Luban, block_number)
-    }
-
-    /// Convenience method to check if [`Hardfork::Plato`] is firstly active at a given block.
-    #[cfg(feature = "bsc")]
-    #[inline]
-    pub fn is_on_plato_at_block(&self, block_number: u64) -> bool {
-        self.fork(Hardfork::Plato).transitions_at_block(block_number)
-    }
-
-    /// Convenience method to check if [`Hardfork::Plato`] is active at a given block.
-    #[cfg(feature = "bsc")]
-    #[inline]
-    pub fn is_plato_active_at_block(&self, block_number: u64) -> bool {
-        self.is_fork_active_at_block(Hardfork::Plato, block_number)
-    }
-
-    /// Convenience method to check if [`Hardfork::Kepler`] is firstly active at a given timestamp
-    /// and parent timestamp.
-    #[cfg(feature = "bsc")]
-    #[inline]
-    pub fn is_on_kepler_at_timestamp(&self, timestamp: u64, parent_timestamp: u64) -> bool {
-        self.fork(Hardfork::Kepler).transitions_at_timestamp(timestamp, parent_timestamp)
-    }
-
-    /// Convenience method to check if [`Hardfork::Kepler`] is active at a given timestamp.
-    #[cfg(feature = "bsc")]
-    #[inline]
-    pub fn is_kepler_active_at_timestamp(&self, timestamp: u64) -> bool {
-        self.is_fork_active_at_timestamp(Hardfork::Kepler, timestamp)
-    }
-
-    /// Convenience method to check if [`Hardfork::Feynman`] is firstly active at a given timestamp
-    /// and parent timestamp.
-    #[cfg(feature = "bsc")]
-    #[inline]
-    pub fn is_on_feynman_at_timestamp(&self, timestamp: u64, parent_timestamp: u64) -> bool {
-        self.fork(Hardfork::Feynman).transitions_at_timestamp(timestamp, parent_timestamp)
-    }
-
-    /// Convenience method to check if [`Hardfork::Feynman`] is active at a given timestamp.
-    #[cfg(feature = "bsc")]
-    #[inline]
-    pub fn is_feynman_active_at_timestamp(&self, timestamp: u64) -> bool {
-        self.is_fork_active_at_timestamp(Hardfork::Feynman, timestamp)
-    }
-
-    /// Convenience method to check if [`Hardfork::FeynmanFix`] is firstly active at a given
-    /// timestamp and parent timestamp.
-    #[cfg(feature = "bsc")]
-    #[inline]
-    pub fn is_on_feynman_fix_at_timestamp(&self, timestamp: u64, parent_timestamp: u64) -> bool {
-        self.fork(Hardfork::FeynmanFix).transitions_at_timestamp(timestamp, parent_timestamp)
-    }
-
-    /// Convenience method to check if [`Hardfork::FeynmanFix`] is active at a given timestamp.
-    #[cfg(feature = "bsc")]
-    #[inline]
-    pub fn is_feynman_fix_active_at_timestamp(&self, timestamp: u64) -> bool {
-        self.is_fork_active_at_timestamp(Hardfork::FeynmanFix, timestamp)
-    }
-
-    /// Convenience method to check if [`Hardfork::Haber`] is firstly active at a given timestamp
-    /// and parent timestamp.
-    #[cfg(feature = "bsc")]
-    #[inline]
-    pub fn is_on_haber_at_timestamp(&self, timestamp: u64, parent_timestamp: u64) -> bool {
-        self.fork(Hardfork::Haber).transitions_at_timestamp(timestamp, parent_timestamp)
-    }
-
-    /// Convenience method to check if [`Hardfork::Haber`] is active at a given timestamp.
-    #[cfg(feature = "bsc")]
-    #[inline]
-    pub fn is_haber_active_at_timestamp(&self, timestamp: u64) -> bool {
-        self.is_fork_active_at_timestamp(Hardfork::Haber, timestamp)
-    }
-
-    /// Convenience method to check if [`Hardfork::HaberFix`] is firstly active at a given timestamp
-    /// and parent timestamp.
-    #[cfg(feature = "bsc")]
-    #[inline]
-    pub fn is_on_haber_fix_at_timestamp(&self, timestamp: u64, parent_timestamp: u64) -> bool {
-        self.fork(Hardfork::HaberFix).transitions_at_timestamp(timestamp, parent_timestamp)
-    }
-
-    /// Convenience method to check if [`Hardfork::HaberFix`] is active at a given timestamp.
-    #[cfg(feature = "bsc")]
-    #[inline]
-    pub fn is_haber_fix_active_at_timestamp(&self, timestamp: u64) -> bool {
-        self.is_fork_active_at_timestamp(Hardfork::HaberFix, timestamp)
     }
 
     /// Creates a [`ForkFilter`] for the block described by [Head].

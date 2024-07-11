@@ -6,6 +6,7 @@ use blst::{
 };
 use reth_bsc_consensus::{DIFF_INTURN, DIFF_NOTURN};
 use reth_errors::{BlockExecutionError, ProviderError};
+use reth_ethereum_forks::{BscHardforks, EthereumHardforks};
 use reth_evm::ConfigureEvm;
 use reth_primitives::{
     parlia::{Snapshot, VoteAddress, MAX_ATTESTATION_EXTRA_LENGTH},
@@ -19,7 +20,7 @@ const BLST_DST: &[u8] = b"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_";
 impl<EvmConfig, DB, P> BscBlockExecutor<EvmConfig, DB, P>
 where
     EvmConfig: ConfigureEvm,
-    DB: Database<Error = ProviderError>,
+    DB: Database<Error: Into<ProviderError> + std::fmt::Display>,
     P: ParliaProvider,
 {
     /// Apply settings and verify headers before a new block is executed.
@@ -55,7 +56,7 @@ where
         header: &Header,
         parent: &Header,
     ) -> Result<(), BlockExecutionError> {
-        if self.parlia().chain_spec().is_ramanujan_active_at_block(header.number) &&
+        if self.chain_spec().is_ramanujan_active_at_block(header.number) &&
             header.timestamp <
                 parent.timestamp +
                     self.parlia().period() +
@@ -77,7 +78,7 @@ where
         header: &Header,
         parent: &Header,
     ) -> Result<(), BlockExecutionError> {
-        if !self.parlia().chain_spec().is_plato_active_at_block(header.number) {
+        if !self.chain_spec().is_plato_active_at_block(header.number) {
             return Ok(());
         }
 

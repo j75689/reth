@@ -8,7 +8,7 @@ use reth_bsc_consensus::{
     is_breathe_block, is_system_transaction, validate_block_post_execution, Parlia,
     ValidatorElectionInfo, ValidatorsInfo,
 };
-use reth_chainspec::ChainSpec;
+use reth_chainspec::{BscHardforks, ChainSpec, EthereumHardforks};
 use reth_errors::{BlockExecutionError, BlockValidationError, ProviderError};
 use reth_evm::{
     execute::{
@@ -31,7 +31,7 @@ use reth_revm::{
 };
 use revm_primitives::{
     db::{Database, DatabaseCommit},
-    BlockEnv, CfgEnvWithHandlerCfg, EnvWithHandlerCfg, ResultAndState, TransactTo,
+    BlockEnv, CfgEnvWithHandlerCfg, EVMError, EnvWithHandlerCfg, ResultAndState, TransactTo,
 };
 use std::{collections::HashMap, num::NonZeroUsize, sync::Arc, time::Instant};
 use tracing::debug;
@@ -83,7 +83,7 @@ where
 {
     fn bsc_executor<DB>(&self, db: DB) -> BscBlockExecutor<EvmConfig, DB, P>
     where
-        DB: Database<Error = ProviderError>,
+        DB: Database<Error: Into<ProviderError> + std::fmt::Display>,
     {
         BscBlockExecutor::new(
             self.chain_spec.clone(),
@@ -100,25 +100,27 @@ where
     P: ParliaProvider + Clone + Unpin + 'static,
     EvmConfig: ConfigureEvm,
 {
-    type Executor<DB: Database<Error = ProviderError>> = BscBlockExecutor<EvmConfig, DB, P>;
+    type Executor<DB: Database<Error: Into<ProviderError> + std::fmt::Display>> =
+        BscBlockExecutor<EvmConfig, DB, P>;
 
-    type BatchExecutor<DB: Database<Error = ProviderError>> = BscBatchExecutor<EvmConfig, DB, P>;
+    type BatchExecutor<DB: Database<Error: Into<ProviderError> + std::fmt::Display>> =
+        BscBatchExecutor<EvmConfig, DB, P>;
 
     fn executor<DB>(&self, db: DB) -> Self::Executor<DB>
     where
-        DB: Database<Error = ProviderError>,
+        DB: Database<Error: Into<ProviderError> + std::fmt::Display>,
     {
         self.bsc_executor(db)
     }
 
-    fn batch_executor<DB>(&self, db: DB, prune_modes: PruneModes) -> Self::BatchExecutor<DB>
+    fn batch_executor<DB>(&self, db: DB) -> Self::BatchExecutor<DB>
     where
-        DB: Database<Error = ProviderError>,
+        DB: Database<Error: Into<ProviderError> + std::fmt::Display>,
     {
         let executor = self.bsc_executor(db);
         BscBatchExecutor {
             executor,
-            batch_record: BlockBatchRecord::new(prune_modes),
+            batch_record: BlockBatchRecord::default(),
             stats: BlockExecutorStats::default(),
             snapshots: Vec::new(),
         }
@@ -159,7 +161,7 @@ where
         mut evm: Evm<'_, Ext, &mut State<DB>>,
     ) -> Result<(Vec<TransactionSigned>, Vec<Receipt>, u64), BlockExecutionError>
     where
-        DB: Database<Error = ProviderError>,
+        DB: Database<Error: Into<ProviderError> + std::fmt::Display>,
     {
         // execute transactions
         let mut cumulative_gas_used = 0;
@@ -191,14 +193,21 @@ where
             self.patch_mainnet_before_tx(transaction, evm.db_mut());
             self.patch_chapel_before_tx(transaction, evm.db_mut());
 
-            EvmConfig::fill_tx_env(evm.tx_mut(), transaction, *sender);
+            self.evm_config.fill_tx_env(evm.tx_mut(), transaction, *sender);
 
             // Execute transaction.
             let ResultAndState { result, state } = evm.transact().map_err(move |err| {
+                let new_err = match err {
+                    EVMError::Transaction(e) => EVMError::Transaction(e),
+                    EVMError::Header(e) => EVMError::Header(e),
+                    EVMError::Database(e) => EVMError::Database(e.into()),
+                    EVMError::Custom(e) => EVMError::Custom(e),
+                    EVMError::Precompile(e) => EVMError::Precompile(e),
+                };
                 // Ensure hash is calculated for error log, if not already done
                 BlockValidationError::EVM {
                     hash: transaction.recalculate_hash(),
-                    error: err.into(),
+                    error: Box::new(new_err),
                 }
             })?;
 
@@ -211,19 +220,15 @@ where
             cumulative_gas_used += result.gas_used();
 
             // Push transaction changeset and calculate header bloom filter for receipt.
-            receipts.push(
-                #[allow(clippy::needless_update)] // side-effect of optimism fields
-                Receipt {
-                    tx_type: transaction.tx_type(),
-                    // Success flag was added in `EIP-658: Embedding transaction status code in
-                    // receipts`.
-                    success: result.is_success(),
-                    cumulative_gas_used,
-                    // convert to reth log
-                    logs: result.into_logs(),
-                    ..Default::default()
-                },
-            );
+            receipts.push(Receipt {
+                tx_type: transaction.tx_type(),
+                // Success flag was added in `EIP-658: Embedding transaction status code in
+                // receipts`.
+                success: result.is_success(),
+                cumulative_gas_used,
+                // convert to reth log
+                logs: result.into_logs(),
+            });
         }
         drop(evm);
 
@@ -282,7 +287,7 @@ impl<EvmConfig, DB, P> BscBlockExecutor<EvmConfig, DB, P> {
 impl<EvmConfig, DB, P> BscBlockExecutor<EvmConfig, DB, P>
 where
     EvmConfig: ConfigureEvm,
-    DB: Database<Error = ProviderError>,
+    DB: Database<Error: Into<ProviderError> + std::fmt::Display>,
     P: ParliaProvider,
 {
     /// Configures a new evm configuration and block environment for the given block.
@@ -291,8 +296,7 @@ where
     fn evm_env_for_block(&self, header: &Header, total_difficulty: U256) -> EnvWithHandlerCfg {
         let mut cfg = CfgEnvWithHandlerCfg::new(Default::default(), Default::default());
         let mut block_env = BlockEnv::default();
-
-        EvmConfig::fill_cfg_and_block_env(
+        self.executor.evm_config.fill_cfg_and_block_env(
             &mut cfg,
             &mut block_env,
             self.chain_spec(),
@@ -329,7 +333,7 @@ where
         // 4. execute normal transactions
         let env = self.evm_env_for_block(&block.header, total_difficulty);
 
-        if !self.parlia.chain_spec().is_feynman_active_at_timestamp(block.timestamp) {
+        if !self.chain_spec().is_feynman_active_at_timestamp(block.timestamp) {
             // apply system contract upgrade
             self.upgrade_system_contracts(block.number, block.timestamp, parent.timestamp)?;
         }
@@ -502,7 +506,7 @@ where
         parent_block_time: u64,
     ) -> Result<bool, BscBlockExecutionError> {
         if let Ok(contracts) = get_upgrade_system_contracts(
-            self.parlia().chain_spec(),
+            self.chain_spec(),
             block_number,
             block_time,
             parent_block_time,
@@ -511,7 +515,7 @@ where
                 debug!("Upgrade system contract {:?} at height {:?}", k, block_number);
 
                 let account = self.state.load_cache_account(k).map_err(|err| {
-                    BscBlockExecutionError::ProviderInnerError { error: err.into() }
+                    BscBlockExecutionError::ProviderInnerError { error: Box::new(err.into()) }
                 })?;
 
                 let mut new_info = account.account_info().unwrap_or_default();
@@ -558,9 +562,16 @@ where
         block_env.basefee = U256::ZERO;
 
         // Execute call.
-        let ResultAndState { result, .. } = evm.transact().map_err(move |e| {
+        let ResultAndState { result, .. } = evm.transact().map_err(move |err| {
+            let new_err = match err {
+                EVMError::Transaction(e) => EVMError::Transaction(e),
+                EVMError::Header(e) => EVMError::Header(e),
+                EVMError::Database(e) => EVMError::Database(e.into()),
+                EVMError::Custom(e) => EVMError::Custom(e),
+                EVMError::Precompile(e) => EVMError::Precompile(e),
+            };
             // Ensure hash is calculated for error log, if not already done
-            BlockValidationError::EVM { hash: B256::default(), error: e.into() }
+            BlockValidationError::EVM { hash: B256::default(), error: Box::new(new_err) }
         })?;
 
         if !result.is_success() {
@@ -582,7 +593,15 @@ where
     ) -> Result<(), BlockExecutionError> {
         let mut evm = self.executor.evm_config.evm_with_env(&mut self.state, env);
 
-        let nonce = evm.db_mut().basic(sender).unwrap().unwrap_or_default().nonce;
+        let nonce = evm
+            .db_mut()
+            .basic(sender)
+            .map_err(|err| BscBlockExecutionError::ProviderInnerError {
+                error: Box::new(err.into()),
+            })
+            .unwrap()
+            .unwrap_or_default()
+            .nonce;
         transaction.set_nonce(nonce);
         let hash = transaction.signature_hash();
         if system_txs.is_empty() || hash != system_txs[0].signature_hash() {
@@ -617,9 +636,16 @@ where
         block_env.basefee = U256::ZERO;
 
         // Execute transaction.
-        let ResultAndState { result, state } = evm.transact().map_err(move |e| {
+        let ResultAndState { result, state } = evm.transact().map_err(move |err| {
+            let new_err = match err {
+                EVMError::Transaction(e) => EVMError::Transaction(e),
+                EVMError::Header(e) => EVMError::Header(e),
+                EVMError::Database(e) => EVMError::Database(e.into()),
+                EVMError::Custom(e) => EVMError::Custom(e),
+                EVMError::Precompile(e) => EVMError::Precompile(e),
+            };
             // Ensure hash is calculated for error log, if not already done
-            BlockValidationError::EVM { hash, error: e.into() }
+            BlockValidationError::EVM { hash, error: Box::new(new_err) }
         })?;
 
         evm.db_mut().commit(state);
@@ -670,12 +696,9 @@ where
         };
 
         // 2. get election info
-        if self.parlia().chain_spec().is_feynman_active_at_timestamp(header.timestamp) &&
+        if self.chain_spec().is_feynman_active_at_timestamp(header.timestamp) &&
             is_breathe_block(parent.timestamp, header.timestamp) &&
-            !self
-                .parlia()
-                .chain_spec()
-                .is_on_feynman_at_timestamp(header.timestamp, parent.timestamp)
+            !self.chain_spec().is_on_feynman_at_timestamp(header.timestamp, parent.timestamp)
         {
             let (to, data) = self.parlia().get_max_elected_validators();
             let bz = self.eth_call(to, data, env.clone())?;
@@ -718,7 +741,7 @@ where
         number: BlockNumber,
         env: EnvWithHandlerCfg,
     ) -> (Vec<Address>, Vec<VoteAddress>) {
-        if !self.parlia().chain_spec().is_luban_active_at_block(number) {
+        if !self.chain_spec().is_luban_active_at_block(number) {
             let (to, data) = self.parlia().get_current_validators_before_luban(number);
             let output = self.eth_call(to, data, env).unwrap();
 
@@ -735,7 +758,7 @@ where
 impl<EvmConfig, DB, P> Executor<DB> for BscBlockExecutor<EvmConfig, DB, P>
 where
     EvmConfig: ConfigureEvm,
-    DB: Database<Error = ProviderError>,
+    DB: Database<Error: Into<ProviderError> + std::fmt::Display>,
     P: ParliaProvider,
 {
     type Input<'a> = BlockExecutionInput<'a, BlockWithSenders>;
@@ -791,7 +814,7 @@ impl<EvmConfig, DB, P> BscBatchExecutor<EvmConfig, DB, P> {
 impl<EvmConfig, DB, P> BatchExecutor<DB> for BscBatchExecutor<EvmConfig, DB, P>
 where
     EvmConfig: ConfigureEvm,
-    DB: Database<Error = ProviderError>,
+    DB: Database<Error: Into<ProviderError> + std::fmt::Display>,
     P: ParliaProvider,
 {
     type Input<'a> = BlockExecutionInput<'a, BlockWithSenders>;
@@ -844,6 +867,10 @@ where
 
     fn set_tip(&mut self, tip: BlockNumber) {
         self.batch_record.set_tip(tip);
+    }
+
+    fn set_prune_modes(&mut self, prune_modes: PruneModes) {
+        self.batch_record.set_prune_modes(prune_modes);
     }
 
     fn size_hint(&self) -> Option<usize> {

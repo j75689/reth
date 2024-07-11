@@ -13,6 +13,7 @@ env:
   OP_IMAGE_NAME: ${{ github.repository_owner }}/op-reth
   IMAGE_NAME: ${{ github.repository_owner }}/reth
   CARGO_TERM_COLOR: always
+  TOOL_CHAIN: "1.79"
 
 jobs:
   extract-version:
@@ -52,11 +53,14 @@ jobs:
             binary: reth
           - command: op-build
             binary: op-reth
+          - command: bsc-build
+            binary: bsc-reth
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
           target: ${{ matrix.configs.target }}
+          toolchain: ${{ env.TOOL_CHAIN }}
       - uses: taiki-e/install-action@cross
       - uses: Swatinem/rust-cache@v2
         with:
@@ -103,7 +107,7 @@ jobs:
 
   draft-release:
     name: draft release
-    needs: [build, extract-version]
+    needs: [ build, extract-version ]
     runs-on: ubuntu-latest
     env:
       VERSION: ${{ needs.extract-version.outputs.VERSION }}
@@ -175,7 +179,7 @@ jobs:
 
           [See pre-built binaries documentation.](https://paradigmxyz.github.io/reth/installation/binaries.html)
 
-          The binaries are signed with the PGP key: `50FB 7CC5 5B2E 8AFA 59FE 03B7 AA5E D56A 7FBF 253E`
+          The binaries are signed with the PGP key: `AF7E D99D 20EA 1CEE F7B4 9919 B9E4 60DC F154 9D61`
 
           | System | Architecture | Binary | PGP Signature |
           |:---:|:---:|:---:|:---|
@@ -186,7 +190,7 @@ jobs:
           | <img src="https://simpleicons.org/icons/apple.svg" style="width: 32px;"/> | aarch64 | [reth-${{ env.VERSION }}-aarch64-apple-darwin.tar.gz](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/reth-${{ env.VERSION }}-aarch64-apple-darwin.tar.gz) | [PGP Signature](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/reth-${{ env.VERSION }}-aarch64-apple-darwin.tar.gz.asc) |
           | | | | |
           | **System** | **Option** | - | **Resource** |
-          | <img src="https://simpleicons.org/icons/docker.svg" style="width: 32px;"/> | Docker | | [${{ env.IMAGE_NAME }}](https://github.com/paradigmxyz/reth/pkgs/container/reth) |
+          | <img src="https://simpleicons.org/icons/docker.svg" style="width: 32px;"/> | Docker | | [${{ env.IMAGE_NAME }}](https://github.com/bnb-chain/reth/pkgs/container/reth) |
           ENDBODY
           )
           assets=()
