@@ -292,7 +292,6 @@ impl<
     }
 
     fn start_fork_choice_update_notifier(&self) {
-        let block_interval = self.block_interval;
         let fork_choice_rx = self.fork_choice_rx.clone();
         let to_engine = self.to_engine.clone();
         let chain_tracker_tx = self.chain_tracker_tx.clone();
@@ -357,7 +356,7 @@ impl<
                                                 }
                                                 ForkchoiceStatus::Syncing => {
                                                     debug!(target: "consensus::parlia", ?fcu_response, "Forkchoice update returned SYNCING, waiting for VALID");
-                                                    sleep(Duration::from_secs(block_interval)).await;
+                                                    sleep(Duration::from_millis(100)).await;
                                                     continue
                                                 }
                                             }
