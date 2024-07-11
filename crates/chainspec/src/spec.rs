@@ -23,11 +23,6 @@ use reth_trie_common::root::state_root_ref_unhashed;
 #[cfg(feature = "std")]
 use std::sync::Arc;
 
-#[cfg(feature = "optimism")]
-use crate::constants::optimism::{
-    BASE_SEPOLIA_BASE_FEE_PARAMS, BASE_SEPOLIA_CANYON_BASE_FEE_PARAMS, OP_BASE_FEE_PARAMS,
-    OP_CANYON_BASE_FEE_PARAMS, OP_SEPOLIA_BASE_FEE_PARAMS, OP_SEPOLIA_CANYON_BASE_FEE_PARAMS,
-};
 pub use alloy_eips::eip1559::BaseFeeParams;
 #[cfg(feature = "bsc")]
 use reth_ethereum_forks::BscHardfork;
@@ -182,8 +177,8 @@ pub static OP_MAINNET: Lazy<Arc<ChainSpec>> = Lazy::new(|| {
         hardforks: OptimismHardfork::op_mainnet(),
         base_fee_params: BaseFeeParamsKind::Variable(
             vec![
-                (EthereumHardfork::London.boxed(), OP_BASE_FEE_PARAMS),
-                (OptimismHardfork::Canyon.boxed(), OP_CANYON_BASE_FEE_PARAMS),
+                (EthereumHardfork::London.boxed(), BaseFeeParams::optimism()),
+                (OptimismHardfork::Canyon.boxed(), BaseFeeParams::optimism_canyon()),
             ]
             .into(),
         ),
@@ -207,8 +202,8 @@ pub static OP_SEPOLIA: Lazy<Arc<ChainSpec>> = Lazy::new(|| {
         hardforks: OptimismHardfork::op_sepolia(),
         base_fee_params: BaseFeeParamsKind::Variable(
             vec![
-                (EthereumHardfork::London.boxed(), OP_SEPOLIA_BASE_FEE_PARAMS),
-                (OptimismHardfork::Canyon.boxed(), OP_SEPOLIA_CANYON_BASE_FEE_PARAMS),
+                (EthereumHardfork::London.boxed(), BaseFeeParams::optimism_sepolia()),
+                (OptimismHardfork::Canyon.boxed(), BaseFeeParams::optimism_sepolia_canyon()),
             ]
             .into(),
         ),
@@ -232,8 +227,8 @@ pub static BASE_SEPOLIA: Lazy<Arc<ChainSpec>> = Lazy::new(|| {
         hardforks: OptimismHardfork::base_sepolia(),
         base_fee_params: BaseFeeParamsKind::Variable(
             vec![
-                (EthereumHardfork::London.boxed(), BASE_SEPOLIA_BASE_FEE_PARAMS),
-                (OptimismHardfork::Canyon.boxed(), BASE_SEPOLIA_CANYON_BASE_FEE_PARAMS),
+                (EthereumHardfork::London.boxed(), BaseFeeParams::base_sepolia()),
+                (OptimismHardfork::Canyon.boxed(), BaseFeeParams::base_sepolia_canyon()),
             ]
             .into(),
         ),
@@ -257,8 +252,8 @@ pub static BASE_MAINNET: Lazy<Arc<ChainSpec>> = Lazy::new(|| {
         hardforks: OptimismHardfork::base_mainnet(),
         base_fee_params: BaseFeeParamsKind::Variable(
             vec![
-                (EthereumHardfork::London.boxed(), OP_BASE_FEE_PARAMS),
-                (OptimismHardfork::Canyon.boxed(), OP_CANYON_BASE_FEE_PARAMS),
+                (EthereumHardfork::London.boxed(), BaseFeeParams::optimism()),
+                (OptimismHardfork::Canyon.boxed(), BaseFeeParams::optimism()),
             ]
             .into(),
         ),
