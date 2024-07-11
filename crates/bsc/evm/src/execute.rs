@@ -862,17 +862,14 @@ where
         Ok(snap)
     }
 
-    pub(crate) fn get_header_by_hash(
-        &self,
-        block_hash: B256,
-    ) -> Result<Header, BlockExecutionError> {
+    fn get_header_by_hash(&self, block_hash: B256) -> Result<Header, BlockExecutionError> {
         self.provider
             .header(&block_hash)
             .map_err(|err| BscBlockExecutionError::ProviderInnerError { error: err.into() })?
             .ok_or_else(|| BscBlockExecutionError::UnknownHeader { block_hash }.into())
     }
 
-    pub(crate) fn find_ancient_header(
+    fn find_ancient_header(
         &self,
         header: &Header,
         count: u64,

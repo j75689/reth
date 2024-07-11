@@ -1,5 +1,5 @@
 [package]
-name = "reth-bsc-tasks"
+name = "reth-bsc-engine"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
