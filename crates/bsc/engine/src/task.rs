@@ -206,7 +206,7 @@ impl<
                     // fetch header and verify
                     let fetch_header_result = match timeout(
                         fetch_header_timeout_duration,
-                        block_fetcher.get_header_with_priority(info.block_hash, Priority::High),
+                        block_fetcher.get_header_with_priority(info.block_hash, Priority::Normal),
                     )
                     .await
                     {
