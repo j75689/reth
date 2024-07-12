@@ -323,23 +323,23 @@ impl<
                                     state.finalized_block_hash = finalized_hash;
                                 }
 
-                                    // send the new update to the engine, this will trigger the engine
-                                    // to download and execute the block we just inserted
-                                    let (tx, rx) = oneshot::channel();
-                                    let _ = to_engine.send(BeaconEngineMessage::ForkchoiceUpdated {
-                                        state,
-                                        payload_attrs: None,
-                                        tx,
-                                    });
-                                    debug!(target: "consensus::parlia", ?state, "Sent fork choice update");
+                                // send the new update to the engine, this will trigger the engine
+                                // to download and execute the block we just inserted
+                                let (tx, rx) = oneshot::channel();
+                                let _ = to_engine.send(BeaconEngineMessage::ForkchoiceUpdated {
+                                    state,
+                                    payload_attrs: None,
+                                    tx,
+                                });
+                                debug!(target: "consensus::parlia", ?state, "Sent fork choice update");
 
-                                    let rx_result = match rx.await {
-                                        Ok(result) => result,
-                                        Err(err)=> {
-                                            error!(target: "consensus::parlia", ?err, "Fork choice update response failed");
-                                            break
-                                        }
-                                    };
+                                let rx_result = match rx.await {
+                                    Ok(result) => result,
+                                    Err(err)=> {
+                                        error!(target: "consensus::parlia", ?err, "Fork choice update response failed");
+                                        break
+                                    }
+                                };
 
                                 match rx_result {
                                     Ok(fcu_response) => {
