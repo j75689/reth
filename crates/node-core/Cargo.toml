@@ -114,6 +114,7 @@ opbnb = [
 
 bsc = [
     "reth-primitives/bsc",
+    "reth-beacon-consensus/bsc",
 ]
 
 jemalloc = ["dep:tikv-jemalloc-ctl"]

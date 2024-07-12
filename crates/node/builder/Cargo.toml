@@ -81,4 +81,5 @@ tempfile.workspace = true
 [features]
 bsc = [
     "reth-bsc-engine/bsc",
+    "reth-beacon-consensus/bsc",
 ]
