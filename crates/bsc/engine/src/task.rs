@@ -254,7 +254,7 @@ impl<
                 // header number the timestamp of latest header should be bigger
                 // than the predicted timestamp and less than the current timestamp.
                 let predicted_timestamp = trusted_header.timestamp +
-                    block_interval * (latest_header.number - trusted_header.number);
+                    block_interval * (latest_header.number + 1 - trusted_header.number);
                 let sealed_header = latest_header.clone().seal_slow();
                 let is_valid_header = match consensus
                     .validate_header_with_predicted_timestamp(&sealed_header, predicted_timestamp)
@@ -299,7 +299,7 @@ impl<
                     for header in headers {
                         let sealed_header = header.clone().seal_slow();
                         let predicted_timestamp = trusted_header.timestamp +
-                            block_interval * (sealed_header.number - trusted_header.number);
+                            block_interval * (sealed_header.number + 1 - trusted_header.number);
                         if consensus
                             .validate_header_with_predicted_timestamp(
                                 &sealed_header,
