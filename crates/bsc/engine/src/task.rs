@@ -265,15 +265,15 @@ impl<
                 };
 
                 // cache header and block
-                // let mut storage = storage.write().await;
-                // storage.insert_new_header(sealed_header.clone());
-                // if info.block.is_some() {
-                //     storage.insert_new_block(
-                //         sealed_header.clone(),
-                //         BlockBody::from(info.block.clone().unwrap()),
-                //     );
-                // }
-                // drop(storage);
+                let mut storage = storage.write().await;
+                storage.insert_new_header(sealed_header.clone());
+                if info.block.is_some() {
+                    storage.insert_new_block(
+                        sealed_header.clone(),
+                        BlockBody::from(info.block.clone().unwrap()),
+                    );
+                }
+                drop(storage);
                 let result = fork_choice_tx.send(ForkChoiceMessage::NewHeader(NewHeaderEvent {
                     header: sealed_header.clone(),
                     // if the pipeline sync is true, the fork choice will not use the safe and
