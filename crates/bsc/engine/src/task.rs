@@ -353,6 +353,7 @@ impl<
                                             }
                                             ForkchoiceStatus::Syncing => {
                                                 trace!(target: "consensus::parlia", ?fcu_response, "Forkchoice update returned SYNCING, waiting for VALID");
+                                                continue
                                             }
                                         }
                                     }
