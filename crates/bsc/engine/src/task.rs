@@ -23,7 +23,6 @@ use std::{
 };
 use tokio::sync::Mutex;
 
-use reth_consensus::Consensus;
 use tokio::{
     signal,
     sync::{
@@ -270,7 +269,8 @@ impl<
                     continue
                 };
 
-                let mut prefetched_headers = Vec::new();
+                let mut disconnected_headers = Vec::new();
+                disconnected_headers.push(sealed_header.clone());
                 let pipeline_sync = (trusted_header.number + EPOCH_SLOTS) < sealed_header.number;
                 if !pipeline_sync && (sealed_header.number - 1) > trusted_header.number {
                     let fetch_headers_result = match timeout(
@@ -297,38 +297,47 @@ impl<
                     let headers = fetch_headers_result.unwrap().into_data();
                     for header in headers {
                         let sealed_header = header.clone().seal_slow();
-                        if consensus.validate_header(&sealed_header).is_err() {
+                        let predicted_timestamp = trusted_header.timestamp +
+                            block_interval * (sealed_header.number - trusted_header.number);
+                        if consensus
+                            .validate_header_with_predicted_timestamp(
+                                &sealed_header,
+                                predicted_timestamp,
+                            )
+                            .is_err()
+                        {
                             trace!(target: "consensus::parlia", "Invalid header");
                             continue
                         }
-                        prefetched_headers.push(sealed_header);
+                        disconnected_headers.push(sealed_header.clone());
                     }
                 };
 
                 // cache header and block
                 let mut storage = storage.write().await;
-                storage.insert_new_header(sealed_header.clone());
-                for header in prefetched_headers {
-                    storage.insert_new_header(header);
-                }
                 if info.block.is_some() {
                     storage.insert_new_block(
                         sealed_header.clone(),
                         BlockBody::from(info.block.clone().unwrap()),
                     );
                 }
-                drop(storage);
-                let result = fork_choice_tx.send(ForkChoiceMessage::NewHeader(NewHeaderEvent {
-                    header: sealed_header.clone(),
-                    // if the pipeline sync is true, the fork choice will not use the safe and
-                    // finalized hash.
-                    // this can make Block Sync Engine to use pipeline sync mode.
-                    pipeline_sync,
-                    trusted_header,
-                }));
-                if result.is_err() {
-                    error!(target: "consensus::parlia", "Failed to send new block event to fork choice");
+
+                for header in disconnected_headers {
+                    storage.insert_new_header(header.clone());
+                    let result =
+                        fork_choice_tx.send(ForkChoiceMessage::NewHeader(NewHeaderEvent {
+                            header: header.clone(),
+                            // if the pipeline sync is true, the fork choice will not use the safe
+                            // and finalized hash.
+                            // this can make Block Sync Engine to use pipeline sync mode.
+                            pipeline_sync,
+                            trusted_header: trusted_header.clone(),
+                        }));
+                    if result.is_err() {
+                        error!(target: "consensus::parlia", "Failed to send new block event to fork choice");
+                    }
                 }
+                drop(storage);
             }
         });
         info!(target: "consensus::parlia", "started listening to network block event")
