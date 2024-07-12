@@ -391,9 +391,9 @@ impl<
 
         tokio::spawn(async move {
             loop {
-                let mut fork_choice_rx_guard = chain_tracker_rx.lock().await;
+                let mut chain_tracker_rx_guard = chain_tracker_rx.lock().await;
                 tokio::select! {
-                    msg = fork_choice_rx_guard.recv() => {
+                    msg = chain_tracker_rx_guard.recv() => {
                         if msg.is_none() {
                             continue;
                         }
