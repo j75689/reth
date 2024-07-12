@@ -143,6 +143,7 @@ impl<
         let block_fetcher = self.block_fetcher.clone();
         let consensus = self.consensus.clone();
         let fork_choice_tx = self.fork_choice_tx.clone();
+        let chain_tracker_tx = self.chain_tracker_tx.clone();
         let fetch_header_timeout_duration = Duration::from_secs(block_interval);
 
         tokio::spawn(async move {
@@ -337,6 +338,15 @@ impl<
                         error!(target: "consensus::parlia", "Failed to send new block event to fork choice");
                     }
                 }
+
+                let result = chain_tracker_tx.send(ForkChoiceMessage::NewHeader(NewHeaderEvent {
+                    header: sealed_header.clone(),
+                    pipeline_sync,
+                    trusted_header: trusted_header.clone(),
+                }));
+                if result.is_err() {
+                    error!(target: "consensus::parlia", "Failed to send new block event to chain tracker");
+                }
                 drop(storage);
             }
         });
@@ -346,7 +356,6 @@ impl<
     fn start_fork_choice_update_notifier(&self) {
         let fork_choice_rx = self.fork_choice_rx.clone();
         let to_engine = self.to_engine.clone();
-        let chain_tracker_tx = self.chain_tracker_tx.clone();
         let storage = self.storage.clone();
         tokio::spawn(async move {
             loop {
@@ -414,15 +423,6 @@ impl<
                                         error!(target: "consensus::parlia", %err, "Parlia fork choice update failed");
                                         continue
                                     }
-                                }
-
-                                let result = chain_tracker_tx.send(ForkChoiceMessage::NewHeader(NewHeaderEvent {
-                                    header: new_header.clone(),
-                                    pipeline_sync: event.pipeline_sync,
-                                    trusted_header: event.trusted_header,
-                                }));
-                                if result.is_err() {
-                                    error!(target: "consensus::parlia", "Failed to send new block event to chain tracker");
                                 }
                             }
                         }
