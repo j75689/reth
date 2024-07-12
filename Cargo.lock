@@ -9200,6 +9200,7 @@ dependencies = [
  "alloy-eips",
  "reth-chainspec",
  "reth-consensus-common",
+ "reth-ethereum-forks",
  "reth-execution-errors",
  "reth-primitives",
  "reth-prune-types",
