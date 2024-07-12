@@ -5,8 +5,13 @@ use reth_chainspec::ChainSpec;
 use reth_engine_primitives::EngineTypes;
 use reth_evm_bsc::SnapshotReader;
 use reth_network::message::EngineMessage;
-use reth_network_p2p::{headers::client::HeadersClient, priority::Priority};
-use reth_primitives::{Block, BlockBody, BlockHashOrNumber, SealedHeader, B256};
+use reth_network_p2p::{
+    headers::client::{HeadersClient, HeadersRequest},
+    priority::Priority,
+};
+use reth_primitives::{
+    header::HeadersDirection, Block, BlockBody, BlockHashOrNumber, SealedHeader, B256,
+};
 use reth_primitives_traits::constants::EPOCH_SLOTS;
 use reth_provider::{BlockReaderIdExt, CanonChainTracker, ParliaProvider};
 use reth_rpc_types::engine::ForkchoiceState;
@@ -18,6 +23,7 @@ use std::{
 };
 use tokio::sync::Mutex;
 
+use reth_consensus::Consensus;
 use tokio::{
     signal,
     sync::{
@@ -206,7 +212,7 @@ impl<
                     // fetch header and verify
                     let fetch_header_result = match timeout(
                         fetch_header_timeout_duration,
-                        block_fetcher.get_header_with_priority(info.block_hash, Priority::Normal),
+                        block_fetcher.get_header_with_priority(info.block_hash, Priority::High),
                     )
                     .await
                     {
@@ -264,9 +270,47 @@ impl<
                     continue
                 };
 
+                let mut prefetched_headers = Vec::new();
+                let pipeline_sync = (trusted_header.number + EPOCH_SLOTS) < sealed_header.number;
+                if !pipeline_sync && (sealed_header.number - 1) > trusted_header.number {
+                    let fetch_headers_result = match timeout(
+                        fetch_header_timeout_duration,
+                        block_fetcher.get_headers(HeadersRequest {
+                            start: BlockHashOrNumber::Hash(sealed_header.parent_hash),
+                            limit: (sealed_header.number - 1) - trusted_header.number,
+                            direction: HeadersDirection::Falling,
+                        }),
+                    )
+                    .await
+                    {
+                        Ok(result) => result,
+                        Err(_) => {
+                            trace!(target: "consensus::parlia", "Fetch header timeout");
+                            continue
+                        }
+                    };
+                    if fetch_headers_result.is_err() {
+                        trace!(target: "consensus::parlia", "Failed to fetch header");
+                        continue
+                    }
+
+                    let headers = fetch_headers_result.unwrap().into_data();
+                    for header in headers {
+                        let sealed_header = header.clone().seal_slow();
+                        if consensus.validate_header(&sealed_header).is_err() {
+                            trace!(target: "consensus::parlia", "Invalid header");
+                            continue
+                        }
+                        prefetched_headers.push(sealed_header);
+                    }
+                };
+
                 // cache header and block
                 let mut storage = storage.write().await;
                 storage.insert_new_header(sealed_header.clone());
+                for header in prefetched_headers {
+                    storage.insert_new_header(header);
+                }
                 if info.block.is_some() {
                     storage.insert_new_block(
                         sealed_header.clone(),
@@ -279,7 +323,7 @@ impl<
                     // if the pipeline sync is true, the fork choice will not use the safe and
                     // finalized hash.
                     // this can make Block Sync Engine to use pipeline sync mode.
-                    pipeline_sync: (trusted_header.number + EPOCH_SLOTS) < sealed_header.number,
+                    pipeline_sync,
                     trusted_header,
                 }));
                 if result.is_err() {
