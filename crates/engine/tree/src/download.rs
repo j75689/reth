@@ -271,6 +271,7 @@ mod tests {
     use super::*;
     use crate::test_utils::insert_headers_into_client;
     use assert_matches::assert_matches;
+    #[cfg(not(feature = "bsc"))]
     use reth_beacon_consensus::EthBeaconConsensus;
     use reth_chainspec::{ChainSpecBuilder, MAINNET};
     use reth_network_p2p::test_utils::TestFullBlockClient;
@@ -301,6 +302,10 @@ mod tests {
             .seal_slow();
 
             insert_headers_into_client(&client, header, 0..total_blocks);
+
+            #[cfg(feature = "bsc")]
+            let consensus = Arc::new(reth_consensus::test_utils::TestConsensus::default());
+            #[cfg(not(feature = "bsc"))]
             let consensus = Arc::new(EthBeaconConsensus::new(chain_spec));
 
             let block_downloader = BasicBlockDownloader::new(client.clone(), consensus);
