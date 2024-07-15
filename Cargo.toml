@@ -554,11 +554,15 @@ test-fuzz = "5"
 iai-callgrind = "0.11"
 
 [patch.crates-io]
-revm = { git = "https://github.com/bnb-chain/revm", rev = "e4bf75d62e36077fb3904c400332da0376c03383" }
-revm-interpreter = { git = "https://github.com/bnb-chain/revm", rev = "e4bf75d62e36077fb3904c400332da0376c03383" }
-revm-precompile = { git = "https://github.com/bnb-chain/revm", rev = "e4bf75d62e36077fb3904c400332da0376c03383" }
-revm-primitives = { git = "https://github.com/bnb-chain/revm", rev = "e4bf75d62e36077fb3904c400332da0376c03383" }
+revm = { git = "https://github.com/bnb-chain/revm", rev = "0fceb6332b50ece91aabe3f90df06ce5aa44111f" }
+revm-interpreter = { git = "https://github.com/bnb-chain/revm", rev = "0fceb6332b50ece91aabe3f90df06ce5aa44111f" }
+revm-precompile = { git = "https://github.com/bnb-chain/revm", rev = "0fceb6332b50ece91aabe3f90df06ce5aa44111f" }
+revm-primitives = { git = "https://github.com/bnb-chain/revm", rev = "0fceb6332b50ece91aabe3f90df06ce5aa44111f" }
 alloy-chains = { git = "https://github.com/bnb-chain/alloy-chains-rs.git", rev = "b7c5379cf47345181f8dce350acafb958f47152a" }
-
-[patch."https://github.com/bluealloy/revm"]
-revm = { git = "https://github.com/bnb-chain/revm", rev = "e4bf75d62e36077fb3904c400332da0376c03383" }
+alloy-rpc-types-eth = { git = "https://github.com/bnb-chain/alloy", rev = "18f098dd78be661433bae682ad161a41f8a9c301" }
+alloy-consensus = { git = "https://github.com/bnb-chain/alloy", rev = "18f098dd78be661433bae682ad161a41f8a9c301" }
+alloy-eips = { git = "https://github.com/bnb-chain/alloy", rev = "18f098dd78be661433bae682ad161a41f8a9c301" }
+alloy-network = { git = "https://github.com/bnb-chain/alloy", rev = "18f098dd78be661433bae682ad161a41f8a9c301" }
+alloy-serde = { git = "https://github.com/bnb-chain/alloy", rev = "18f098dd78be661433bae682ad161a41f8a9c301" }
+alloy-signer = { git = "https://github.com/bnb-chain/alloy", rev = "18f098dd78be661433bae682ad161a41f8a9c301" }
+alloy-signer-local = { git = "https://github.com/bnb-chain/alloy", rev = "18f098dd78be661433bae682ad161a41f8a9c301" }

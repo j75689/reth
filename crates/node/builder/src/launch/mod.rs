@@ -14,7 +14,6 @@ use reth_beacon_consensus::{
 };
 #[cfg(feature = "bsc")]
 use reth_bsc_engine::ParliaEngineBuilder;
-use reth_consensus::Consensus;
 use reth_consensus_debug_client::{DebugConsensusClient, EtherscanBlockProvider, RpcBlockProvider};
 use reth_engine_util::EngineMessageStreamExt;
 use reth_exex::ExExManagerHandle;
@@ -233,6 +232,7 @@ where
                 let client = ParliaEngineBuilder::new(
                     ctx.chain_spec(),
                     ParliaConfig::default(),
+                    ctx.blockchain_db().clone(),
                     ctx.blockchain_db().clone(),
                     consensus_engine_tx.clone(),
                     engine_rx,

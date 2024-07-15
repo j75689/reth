@@ -6,12 +6,10 @@ use reth_engine_primitives::EngineTypes;
 use reth_evm_bsc::SnapshotReader;
 use reth_network::message::EngineMessage;
 use reth_network_p2p::{
-    headers::client::{HeadersClient, HeadersRequest},
+    headers::client::{HeadersClient, HeadersDirection, HeadersRequest},
     priority::Priority,
 };
-use reth_primitives::{
-    header::HeadersDirection, Block, BlockBody, BlockHashOrNumber, SealedHeader, B256,
-};
+use reth_primitives::{Block, BlockBody, BlockHashOrNumber, SealedHeader, B256};
 use reth_primitives_traits::constants::EPOCH_SLOTS;
 use reth_provider::{BlockReaderIdExt, CanonChainTracker, ParliaProvider};
 use reth_rpc_types::engine::ForkchoiceState;
