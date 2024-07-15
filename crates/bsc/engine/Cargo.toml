@@ -68,4 +68,5 @@ bsc = [
     "reth-consensus-common/bsc",
     "reth-bsc-consensus/bsc",
     "reth-evm-bsc/bsc",
+    "reth-beacon-consensus/bsc",
 ]
