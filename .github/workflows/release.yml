@@ -49,8 +49,6 @@ jobs:
             os: ubuntu-20.04
             profile: maxperf
         build:
-          - command: build
-            binary: reth
           - command: op-build
             binary: op-reth
           - command: bsc-build
@@ -107,7 +105,7 @@ jobs:
 
   draft-release:
     name: draft release
-    needs: [ build, extract-version ]
+    needs: [ extract-version ]
     runs-on: ubuntu-latest
     env:
       VERSION: ${{ needs.extract-version.outputs.VERSION }}
@@ -122,12 +120,14 @@ jobs:
           fetch-depth: 0
       - name: Download artifacts
         uses: actions/download-artifact@v4
-      - name: Generate full changelog
-        id: changelog
+      - name: Generate Summary
+        id: summary
         run: |
-          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
-          echo "$(git log --pretty=format:"- %s" $(git describe --tags --abbrev=0 ${{ env.VERSION }}^)..${{ env.VERSION }})" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+              chmod 755 ./.github/generate_change_log.sh
+              SUMMARY=$(./.github/generate_change_log.sh ${{ env.VERSION }}
+              echo "SUMMARY<<EOF" >> $GITHUB_OUTPUT
+              echo "$SUMMARY" >> $GITHUB_OUTPUT
+              echo "EOF" >> $GITHUB_OUTPUT
       - name: Create release draft
         env:
           GITHUB_USER: ${{ github.repository_owner }}
@@ -138,42 +138,9 @@ jobs:
           body=$(cat <<- "ENDBODY"
           ![image](https://raw.githubusercontent.com/paradigmxyz/reth/main/assets/reth-prod.png)
 
-          ## Testing Checklist (DELETE ME)
-
-          - [ ] Run on testnet for 1-3 days.
-          - [ ] Resync a mainnet node.
-          - [ ] Ensure all CI checks pass.
-
-          ## Release Checklist (DELETE ME)
-
-          - [ ] Ensure all crates have had their versions bumped.
-          - [ ] Write the summary.
-          - [ ] Fill out the update priority.
-          - [ ] Ensure all binaries have been added.
-          - [ ] Prepare release posts (Twitter, ...).
-
           ## Summary
 
-          Add a summary, including:
-
-          - Critical bug fixes
-          - New features
-          - Any breaking changes (and what to expect)
-
-          ## Update Priority
-
-          This table provides priorities for which classes of users should update particular components.
-
-          | User Class           | Priority        |
-          |----------------------|-----------------|
-          | Payload Builders     | <TODO> |
-          | Non-Payload Builders | <TODO>    |
-
-          *See [Update Priorities](https://paradigmxyz.github.io/reth/installation/priorities.html) for more information about this table.*
-
-          ## All Changes
-
-          ${{ steps.changelog.outputs.CHANGELOG }}
+          ${{ steps.summary.outputs.SUMMARY }}
 
           ## Binaries
 
@@ -183,14 +150,20 @@ jobs:
 
           | System | Architecture | Binary | PGP Signature |
           |:---:|:---:|:---:|:---|
-          | <img src="https://simpleicons.org/icons/linux.svg" style="width: 32px;"/> | x86_64 | [reth-${{ env.VERSION }}-x86_64-unknown-linux-gnu.tar.gz](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/reth-${{ env.VERSION }}-x86_64-unknown-linux-gnu.tar.gz) | [PGP Signature](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/reth-${{ env.VERSION }}-x86_64-unknown-linux-gnu.tar.gz.asc) |
-          | <img src="https://simpleicons.org/icons/linux.svg" style="width: 32px;"/> | aarch64 | [reth-${{ env.VERSION }}-aarch64-unknown-linux-gnu.tar.gz](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/reth-${{ env.VERSION }}-aarch64-unknown-linux-gnu.tar.gz) | [PGP Signature](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/reth-${{ env.VERSION }}-aarch64-unknown-linux-gnu.tar.gz.asc) |
-          | <img src="https://simpleicons.org/icons/windows.svg" style="width: 32px;"/> | x86_64 | [reth-${{ env.VERSION }}-x86_64-pc-windows-gnu.tar.gz](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/reth-${{ env.VERSION }}-x86_64-pc-windows-gnu.tar.gz) | [PGP Signature](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/reth-${{ env.VERSION }}-x86_64-pc-windows-gnu.tar.gz.asc) |
-          | <img src="https://simpleicons.org/icons/apple.svg" style="width: 32px;"/> | x86_64 | [reth-${{ env.VERSION }}-x86_64-apple-darwin.tar.gz](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/reth-${{ env.VERSION }}-x86_64-apple-darwin.tar.gz) | [PGP Signature](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/reth-${{ env.VERSION }}-x86_64-apple-darwin.tar.gz.asc) |
-          | <img src="https://simpleicons.org/icons/apple.svg" style="width: 32px;"/> | aarch64 | [reth-${{ env.VERSION }}-aarch64-apple-darwin.tar.gz](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/reth-${{ env.VERSION }}-aarch64-apple-darwin.tar.gz) | [PGP Signature](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/reth-${{ env.VERSION }}-aarch64-apple-darwin.tar.gz.asc) |
+          | <img src="https://simpleicons.org/icons/linux.svg" style="width: 32px;"/> | x86_64 | [bsc-reth-${{ env.VERSION }}-x86_64-unknown-linux-gnu.tar.gz](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/bsc-reth-${{ env.VERSION }}-x86_64-unknown-linux-gnu.tar.gz) | [PGP Signature](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/bsc-reth-${{ env.VERSION }}-x86_64-unknown-linux-gnu.tar.gz.asc) |
+          | <img src="https://simpleicons.org/icons/linux.svg" style="width: 32px;"/> | aarch64 | [bsc-reth-${{ env.VERSION }}-aarch64-unknown-linux-gnu.tar.gz](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/bsc-reth-${{ env.VERSION }}-aarch64-unknown-linux-gnu.tar.gz) | [PGP Signature](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/bsc-reth-${{ env.VERSION }}-aarch64-unknown-linux-gnu.tar.gz.asc) |
+          | <img src="https://simpleicons.org/icons/windows.svg" style="width: 32px;"/> | x86_64 | [bsc-reth-${{ env.VERSION }}-x86_64-pc-windows-gnu.tar.gz](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/bsc-reth-${{ env.VERSION }}-x86_64-pc-windows-gnu.tar.gz) | [PGP Signature](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/bsc-reth-${{ env.VERSION }}-x86_64-pc-windows-gnu.tar.gz.asc) |
+          | <img src="https://simpleicons.org/icons/apple.svg" style="width: 32px;"/> | x86_64 | [bsc-reth-${{ env.VERSION }}-x86_64-apple-darwin.tar.gz](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/bsc-reth-${{ env.VERSION }}-x86_64-apple-darwin.tar.gz) | [PGP Signature](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/bsc-reth-${{ env.VERSION }}-x86_64-apple-darwin.tar.gz.asc) |
+          | <img src="https://simpleicons.org/icons/apple.svg" style="width: 32px;"/> | aarch64 | [bsc-reth-${{ env.VERSION }}-aarch64-apple-darwin.tar.gz](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/bsc-reth-${{ env.VERSION }}-aarch64-apple-darwin.tar.gz) | [PGP Signature](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/bsc-reth-${{ env.VERSION }}-aarch64-apple-darwin.tar.gz.asc) |
+          | <img src="https://simpleicons.org/icons/linux.svg" style="width: 32px;"/> | x86_64 | [op-reth-${{ env.VERSION }}-x86_64-unknown-linux-gnu.tar.gz](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/op-reth-${{ env.VERSION }}-x86_64-unknown-linux-gnu.tar.gz) | [PGP Signature](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/op-reth-${{ env.VERSION }}-x86_64-unknown-linux-gnu.tar.gz.asc) |
+          | <img src="https://simpleicons.org/icons/linux.svg" style="width: 32px;"/> | aarch64 | [op-reth-${{ env.VERSION }}-aarch64-unknown-linux-gnu.tar.gz](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/op-reth-${{ env.VERSION }}-aarch64-unknown-linux-gnu.tar.gz) | [PGP Signature](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/op-reth-${{ env.VERSION }}-aarch64-unknown-linux-gnu.tar.gz.asc) |
+          | <img src="https://simpleicons.org/icons/windows.svg" style="width: 32px;"/> | x86_64 | [op-reth-${{ env.VERSION }}-x86_64-pc-windows-gnu.tar.gz](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/op-reth-${{ env.VERSION }}-x86_64-pc-windows-gnu.tar.gz) | [PGP Signature](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/op-reth-${{ env.VERSION }}-x86_64-pc-windows-gnu.tar.gz.asc) |
+          | <img src="https://simpleicons.org/icons/apple.svg" style="width: 32px;"/> | x86_64 | [op-reth-${{ env.VERSION }}-x86_64-apple-darwin.tar.gz](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/op-reth-${{ env.VERSION }}-x86_64-apple-darwin.tar.gz) | [PGP Signature](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/op-reth-${{ env.VERSION }}-x86_64-apple-darwin.tar.gz.asc) |
+          | <img src="https://simpleicons.org/icons/apple.svg" style="width: 32px;"/> | aarch64 | [op-reth-${{ env.VERSION }}-aarch64-apple-darwin.tar.gz](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/op-reth-${{ env.VERSION }}-aarch64-apple-darwin.tar.gz) | [PGP Signature](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/op-reth-${{ env.VERSION }}-aarch64-apple-darwin.tar.gz.asc) |
           | | | | |
           | **System** | **Option** | - | **Resource** |
-          | <img src="https://simpleicons.org/icons/docker.svg" style="width: 32px;"/> | Docker | | [${{ env.IMAGE_NAME }}](https://github.com/bnb-chain/reth/pkgs/container/reth) |
+          | <img src="https://simpleicons.org/icons/docker.svg" style="width: 32px;"/> | Docker | | [${{ env.IMAGE_NAME }}](https://github.com/bnb-chain/reth/pkgs/container/bsc-reth) |
+          | <img src="https://simpleicons.org/icons/docker.svg" style="width: 32px;"/> | Docker | | [${{ env.IMAGE_NAME }}](https://github.com/bnb-chain/reth/pkgs/container/op-reth) |
           ENDBODY
           )
           assets=()

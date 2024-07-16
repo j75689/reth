@@ -2,6 +2,8 @@
 
 ## v1.0.0-rc.2
 
+This release is a release candidate for the v1.0.0 release. It includes a number of new features and bug fixes.
+
 ### FEATURES
 * [\#49](https://github.com/bnb-chain/reth/pull/49) ci: specify rust toolchain version
 * [\#50](https://github.com/bnb-chain/reth/pull/50) chore: add bsc and docker commands to readme
@@ -42,6 +44,7 @@
 * [\#46](https://github.com/bnb-chain/reth/pull/46) fix: check header timestamp in parlia task
 
 ## v0.1.0-beta.3
+
 ### FEATURE
 * [\#33](https://github.com/bnb-chain/reth/pull/33) feat: enable Shanghai, Canyon, Cancun, Ecotone, Haber on opBNB mainnet
 
@@ -55,5 +58,6 @@
 * [\#17](https://github.com/bnb-chain/reth/pull/17) fix p2p incompatible forks for opbnb testnet and mainnet
 
 ## v0.1.0-beta.1
+
 ### FEATURE
 * [\#10](https://github.com/bnb-chain/reth/pull/10) feat: support opbnb network
