@@ -123,11 +123,11 @@ jobs:
       - name: Generate Summary
         id: summary
         run: |
-              chmod 755 ./.github/generate_change_log.sh
-              SUMMARY=$(./.github/generate_change_log.sh ${{ env.VERSION }}
-              echo "SUMMARY<<EOF" >> $GITHUB_OUTPUT
-              echo "$SUMMARY" >> $GITHUB_OUTPUT
-              echo "EOF" >> $GITHUB_OUTPUT
+          chmod 755 ./.github/generate_change_log.sh
+          SUMMARY=$(./.github/generate_change_log.sh ${{ env.VERSION }})
+          echo "SUMMARY<<EOF" >> $GITHUB_OUTPUT
+          echo "$SUMMARY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
       - name: Create release draft
         env:
           GITHUB_USER: ${{ github.repository_owner }}
