@@ -9087,7 +9087,6 @@ dependencies = [
  "reth-errors",
  "reth-evm",
  "reth-evm-ethereum",
- "reth-evm-optimism",
  "reth-network-api",
  "reth-network-peers",
  "reth-node-api",
