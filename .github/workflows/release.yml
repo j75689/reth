@@ -139,7 +139,6 @@ jobs:
           ![image](https://raw.githubusercontent.com/paradigmxyz/reth/main/assets/reth-prod.png)
 
           ## Summary
-
           ${{ steps.summary.outputs.SUMMARY }}
 
           ## Binaries
