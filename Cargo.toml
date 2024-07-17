@@ -384,12 +384,12 @@ reth-trie-common = { path = "crates/trie/common" }
 reth-trie-parallel = { path = "crates/trie/parallel" }
 
 # revm
-revm = { version = "12.0.0", features = [
+revm = { version = "12.1.0", features = [
     "std",
     "secp256k1",
     "blst",
 ], default-features = false }
-revm-primitives = { version = "7.0.0", features = [
+revm-primitives = { version = "7.1.0", features = [
     "std",
 ], default-features = false }
 revm-inspectors = "0.5"
@@ -552,10 +552,10 @@ test-fuzz = "5"
 iai-callgrind = "0.11"
 
 [patch.crates-io]
-revm = { git = "https://github.com/bnb-chain/revm", rev = "0fceb6332b50ece91aabe3f90df06ce5aa44111f" }
-revm-interpreter = { git = "https://github.com/bnb-chain/revm", rev = "0fceb6332b50ece91aabe3f90df06ce5aa44111f" }
-revm-precompile = { git = "https://github.com/bnb-chain/revm", rev = "0fceb6332b50ece91aabe3f90df06ce5aa44111f" }
-revm-primitives = { git = "https://github.com/bnb-chain/revm", rev = "0fceb6332b50ece91aabe3f90df06ce5aa44111f" }
+revm = { git = "https://github.com/bnb-chain/revm", rev = "d30e986609cb663467ec33745dba0ffd233bfcd2" }
+revm-interpreter = { git = "https://github.com/bnb-chain/revm", rev = "d30e986609cb663467ec33745dba0ffd233bfcd2" }
+revm-precompile = { git = "https://github.com/bnb-chain/revm", rev = "d30e986609cb663467ec33745dba0ffd233bfcd2" }
+revm-primitives = { git = "https://github.com/bnb-chain/revm", rev = "d30e986609cb663467ec33745dba0ffd233bfcd2" }
 alloy-chains = { git = "https://github.com/bnb-chain/alloy-chains-rs.git", rev = "b7c5379cf47345181f8dce350acafb958f47152a" }
 alloy-rpc-types-eth = { git = "https://github.com/bnb-chain/alloy", rev = "18f098dd78be661433bae682ad161a41f8a9c301" }
 alloy-consensus = { git = "https://github.com/bnb-chain/alloy", rev = "18f098dd78be661433bae682ad161a41f8a9c301" }
