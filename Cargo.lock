@@ -7431,6 +7431,7 @@ dependencies = [
  "alloy-eips",
  "alloy-genesis",
  "alloy-primitives",
+ "alloy-trie",
  "arbitrary",
  "bytes 1.6.0",
  "modular-bitfield",
