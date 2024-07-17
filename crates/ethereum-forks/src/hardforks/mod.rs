@@ -10,7 +10,13 @@ mod bsc;
 pub use bsc::BscHardforks;
 
 use crate::{ForkCondition, Hardfork};
+#[cfg(feature = "std")]
 use rustc_hash::FxHashMap;
+#[cfg(feature = "std")]
+use std::collections::hash_map::Entry;
+
+#[cfg(not(feature = "std"))]
+use alloc::{boxed::Box, collections::btree_map::Entry, vec::Vec};
 
 /// Generic trait over a set of ordered hardforks
 pub trait Hardforks: Default + Clone {
@@ -36,7 +42,10 @@ pub trait Hardforks: Default + Clone {
 #[derive(Default, Clone, PartialEq, Eq)]
 pub struct ChainHardforks {
     forks: Vec<(Box<dyn Hardfork>, ForkCondition)>,
+    #[cfg(feature = "std")]
     map: FxHashMap<&'static str, ForkCondition>,
+    #[cfg(not(feature = "std"))]
+    map: alloc::collections::BTreeMap<&'static str, ForkCondition>,
 }
 
 impl ChainHardforks {
@@ -103,7 +112,7 @@ impl ChainHardforks {
     /// Inserts `fork` into list, updating with a new [`ForkCondition`] if it already exists.
     pub fn insert<H: Hardfork>(&mut self, fork: H, condition: ForkCondition) {
         match self.map.entry(fork.name()) {
-            std::collections::hash_map::Entry::Occupied(mut entry) => {
+            Entry::Occupied(mut entry) => {
                 *entry.get_mut() = condition;
                 if let Some((_, inner)) =
                     self.forks.iter_mut().find(|(inner, _)| inner.name() == fork.name())
@@ -111,7 +120,7 @@ impl ChainHardforks {
                     *inner = condition;
                 }
             }
-            std::collections::hash_map::Entry::Vacant(entry) => {
+            Entry::Vacant(entry) => {
                 entry.insert(condition);
                 self.forks.push((Box::new(fork), condition));
             }
