@@ -204,7 +204,7 @@ macro_rules! impl_compression_for_compact {
                 type Compressed = Vec<u8>;
 
                 fn compress_to_buf<B: bytes::BufMut + AsMut<[u8]>>(self, buf: &mut B) {
-                    let _ = Compact::to_compact(self, buf);
+                    let _ = Compact::to_compact(&self, buf);
                 }
             }
 
@@ -256,7 +256,7 @@ macro_rules! impl_compression_fixed_compact {
                 type Compressed = Vec<u8>;
 
                 fn compress_to_buf<B: bytes::BufMut + AsMut<[u8]>>(self, buf: &mut B) {
-                    let _  = Compact::to_compact(self, buf);
+                    let _  = Compact::to_compact(&self, buf);
                 }
 
                 fn uncompressable_ref(&self) -> Option<&[u8]> {
