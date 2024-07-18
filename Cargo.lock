@@ -8150,6 +8150,7 @@ name = "reth-exex"
 version = "1.0.2"
 dependencies = [
  "eyre",
+ "futures",
  "metrics",
  "reth-blockchain-tree",
  "reth-chainspec",
