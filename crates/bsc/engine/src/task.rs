@@ -310,6 +310,13 @@ impl<
                         }
                         disconnected_headers.push(sealed_header.clone());
                     }
+
+                    // check last header.parent_hash is match the trusted header
+                    if !disconnected_headers.is_empty() &&
+                        disconnected_headers.last().unwrap().parent_hash != trusted_header.hash()
+                    {
+                        continue;
+                    }
                 };
 
                 // cache header and block
