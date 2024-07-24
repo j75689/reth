@@ -267,6 +267,21 @@ impl<
                 if !is_valid_header {
                     continue
                 };
+                // check if the header is the same as the block hash
+                // that probably means the block is not sealed yet
+                let block_hash = match info.block_hash {
+                    BlockHashOrNumber::Hash(hash) => hash,
+                    BlockHashOrNumber::Number(number) => {
+                        // trigger by the interval tick, can only trust the number
+                        if number != sealed_header.number {
+                            continue;
+                        }
+                        sealed_header.hash()
+                    }
+                };
+                if sealed_header.hash() != block_hash {
+                    continue;
+                }
 
                 let mut disconnected_headers = Vec::new();
                 disconnected_headers.push(sealed_header.clone());
@@ -309,6 +324,12 @@ impl<
                             continue
                         }
                         disconnected_headers.push(sealed_header.clone());
+                    }
+
+                    if disconnected_headers.len() !=
+                        (sealed_header.number - 1 - trusted_header.number) as usize
+                    {
+                        continue;
                     }
 
                     // check last header.parent_hash is match the trusted header
