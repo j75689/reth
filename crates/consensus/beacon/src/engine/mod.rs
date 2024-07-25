@@ -1726,13 +1726,22 @@ where
 
             BlockchainTreeAction::InsertDownloadedPayload { block } => {
                 let downloaded_num_hash = block.num_hash();
+                let start = Instant::now();
                 match self.blockchain.insert_block_without_senders(
-                    block,
+                    block.clone(),
                     BlockValidationKind::SkipStateRootValidation,
                 ) {
                     Ok(status) => {
                         match status {
                             InsertPayloadOk::Inserted(BlockStatus::Valid(_)) => {
+                                let elapsed = start.elapsed();
+                                let event_block = Arc::new(block);
+                                let event = BeaconConsensusEngineEvent::CanonicalBlockAdded(
+                                    event_block,
+                                    elapsed,
+                                );
+                                self.event_sender.notify(event);
+
                                 // block is connected to the canonical chain and is valid.
                                 // if it's not connected to current canonical head, the state root
                                 // has not been validated.
