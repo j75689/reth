@@ -637,7 +637,7 @@ impl StaticFileProvider {
                 StaticFileSegment::Sidecars => self.ensure_invariants::<_, tables::Sidecars>(
                     provider,
                     segment,
-                    highest_block,
+                    highest_tx,
                     highest_block,
                 )?,
             } {
