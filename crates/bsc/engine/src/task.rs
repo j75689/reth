@@ -309,21 +309,26 @@ impl<
                     }
 
                     let headers = fetch_headers_result.unwrap().into_data();
-                    for header in headers {
-                        let sealed_header = header.clone().seal_slow();
-                        let predicted_timestamp = trusted_header.timestamp +
-                            block_interval * (sealed_header.number - 1 - trusted_header.number);
-                        if consensus
-                            .validate_header_with_predicted_timestamp(
-                                &sealed_header,
-                                predicted_timestamp,
-                            )
-                            .is_err()
-                        {
-                            trace!(target: "consensus::parlia", "Invalid header");
-                            continue
+                    if headers.is_empty() {
+                        continue
+                    }
+                    let mut parent_hash = headers.first().unwrap().parent_hash;
+                    for (i, _) in headers.iter().enumerate() {
+                        if i == 0 {
+                            continue;
                         }
+                        let sealed_header = headers[i].clone().seal_slow();
+                        if sealed_header.hash() != parent_hash {
+                            break;
+                        }
+                        parent_hash = sealed_header.parent_hash;
                         disconnected_headers.push(sealed_header.clone());
+                    }
+
+                    // check if the length of the disconnected headers is the same as the headers
+                    // if not, the headers are not valid
+                    if disconnected_headers.len() != headers.len() {
+                        continue;
                     }
 
                     // check last header.parent_hash is match the trusted header
