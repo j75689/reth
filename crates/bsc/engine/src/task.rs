@@ -284,7 +284,6 @@ impl<
                 }
 
                 let mut disconnected_headers = Vec::new();
-                disconnected_headers.push(sealed_header.clone());
                 let pipeline_sync = (trusted_header.number + EPOCH_SLOTS) < sealed_header.number;
                 if !pipeline_sync && (sealed_header.number - 1) > trusted_header.number {
                     let fetch_headers_result = match timeout(
@@ -336,6 +335,8 @@ impl<
                     }
                 };
 
+                disconnected_headers.insert(0, sealed_header.clone());
+                disconnected_headers.reverse();
                 // cache header and block
                 let mut storage = storage.write().await;
                 if info.block.is_some() {
@@ -344,7 +345,6 @@ impl<
                         BlockBody::from(info.block.clone().unwrap()),
                     );
                 }
-
                 for header in disconnected_headers {
                     storage.insert_new_header(header.clone());
                     let result =
@@ -357,9 +357,11 @@ impl<
                             trusted_header: trusted_header.clone(),
                         }));
                     if result.is_err() {
-                        error!(target: "consensus::parlia", "Failed to send new block event to fork choice");
+                        error!(target: "consensus::parlia", "Failed to send new block event to
+                    fork choice");
                     }
                 }
+                drop(storage);
 
                 let result = chain_tracker_tx.send(ForkChoiceMessage::NewHeader(NewHeaderEvent {
                     header: sealed_header.clone(),
@@ -369,7 +371,6 @@ impl<
                 if result.is_err() {
                     error!(target: "consensus::parlia", "Failed to send new block event to chain tracker");
                 }
-                drop(storage);
             }
         });
         info!(target: "consensus::parlia", "started listening to network block event")
