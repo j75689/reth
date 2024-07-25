@@ -19,6 +19,7 @@ use std::{
     sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
+use alloy_rlp::Encodable;
 use tokio::sync::Mutex;
 
 use tokio::{
@@ -321,9 +322,15 @@ impl<
                             .is_err()
                         {
                             trace!(target: "consensus::parlia", "Invalid header");
-                            continue
+                            break
                         }
                         disconnected_headers.push(sealed_header.clone());
+                    }
+                
+                    // check if the length of the disconnected headers is the same as the headers
+                    // if not, the headers are not valid
+                    if disconnected_headers.len() != headers.len() {
+                        continue;
                     }
 
                     // check last header.parent_hash is match the trusted header
