@@ -29,11 +29,13 @@ pub struct ParliaClient {
     /// cached header and body
     storage: Storage,
     fetch_client: FetchClient,
+    peer_id: PeerId,
 }
 
 impl ParliaClient {
-    pub(crate) const fn new(storage: Storage, fetch_client: FetchClient) -> Self {
-        Self { storage, fetch_client }
+    pub(crate) fn new(storage: Storage, fetch_client: FetchClient) -> Self {
+        let peer_id = PeerId::random();
+        Self { storage, fetch_client, peer_id }
     }
 
     async fn fetch_headers(&self, request: HeadersRequest) -> InnerFetchHeaderResult {
@@ -87,6 +89,11 @@ impl ParliaClient {
 
         Ok(bodies)
     }
+
+    async fn clean_cache(&self) {
+        let mut storage = self.storage.write().await;
+        storage.clean_caches()
+    }
 }
 
 impl HeadersClient for ParliaClient {
@@ -98,10 +105,11 @@ impl HeadersClient for ParliaClient {
         priority: Priority,
     ) -> Self::Output {
         let this = self.clone();
+        let peer_id = self.peer_id;
         Box::pin(async move {
             let result = this.fetch_headers(request.clone()).await;
             if let Ok(headers) = result {
-                return Ok(WithPeerId::new(PeerId::random(), headers));
+                return Ok(WithPeerId::new(peer_id, headers));
             }
             this.fetch_client.get_headers_with_priority(request.clone(), priority).await
         })
@@ -117,10 +125,11 @@ impl BodiesClient for ParliaClient {
         priority: Priority,
     ) -> Self::Output {
         let this = self.clone();
+        let peer_id = self.peer_id;
         Box::pin(async move {
             let result = this.fetch_bodies(hashes.clone()).await;
             if let Ok(blocks) = result {
-                return Ok(WithPeerId::new(PeerId::random(), blocks));
+                return Ok(WithPeerId::new(peer_id, blocks));
             }
             this.fetch_client.get_block_bodies_with_priority(hashes.clone(), priority).await
         })
@@ -130,7 +139,18 @@ impl BodiesClient for ParliaClient {
 impl DownloadClient for ParliaClient {
     fn report_bad_message(&self, peer_id: PeerId) {
         let this = self.clone();
-        this.fetch_client.report_bad_message(peer_id)
+        if peer_id == self.peer_id {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                let handle = tokio::spawn(async move {
+                    this.clean_cache().await;
+                });
+
+                handle.await.unwrap();
+            });
+        } else {
+            this.fetch_client.report_bad_message(peer_id)
+        }
     }
 
     fn num_connected_peers(&self) -> usize {

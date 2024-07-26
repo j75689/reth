@@ -219,6 +219,13 @@ impl StorageInner {
         self.best_finalized_hash = finalized;
         self.best_safe_hash = safe;
     }
+
+    /// Cleans the caches
+    pub(crate) fn clean_caches(&mut self) {
+        self.headers = LimitedHashSet::new(STORAGE_CACHE_NUM);
+        self.hash_to_number = LimitedHashSet::new(STORAGE_CACHE_NUM);
+        self.bodies = LimitedHashSet::new(STORAGE_CACHE_NUM);
+    }
 }
 
 #[derive(Debug)]
