@@ -140,13 +140,8 @@ impl DownloadClient for ParliaClient {
     fn report_bad_message(&self, peer_id: PeerId) {
         let this = self.clone();
         if peer_id == self.peer_id {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(async {
-                let handle = tokio::spawn(async move {
-                    this.clean_cache().await;
-                });
-
-                handle.await.unwrap();
+            tokio::spawn(async move {
+                this.clean_cache().await;
             });
         } else {
             this.fetch_client.report_bad_message(peer_id)

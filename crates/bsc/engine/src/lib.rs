@@ -329,4 +329,46 @@ mod tests {
         assert_eq!(set.get(&2), Some(&2));
         assert_eq!(set.get(&3), Some(&3));
     }
+
+    #[test]
+    fn test_clean_cache() {
+        let default_block = Header::default().seal_slow();
+        let mut storage = StorageInner {
+            best_hash: default_block.hash(),
+            best_block: default_block.number,
+            best_header: default_block.clone(),
+            headers: LimitedHashSet::new(10),
+            hash_to_number: LimitedHashSet::new(10),
+            bodies: LimitedHashSet::new(10),
+            best_finalized_hash: B256::default(),
+            best_safe_hash: B256::default(),
+        };
+        storage.headers.put(default_block.number, default_block.clone());
+        storage.hash_to_number.put(default_block.hash(), default_block.number);
+
+        let block = Header::default().seal_slow();
+        storage.insert_new_block(block.clone(), BlockBody::default());
+        assert_eq!(storage.best_block, block.number);
+        assert_eq!(storage.best_hash, block.hash());
+        assert_eq!(storage.best_header, block);
+        assert_eq!(storage.headers.get(&block.number), Some(&block));
+        assert_eq!(storage.hash_to_number.get(&block.hash()), Some(&block.number));
+        assert_eq!(storage.bodies.get(&block.hash()), Some(&BlockBody::default()));
+        assert_eq!(
+            storage.header_by_hash_or_number(BlockHashOrNumber::Hash(block.hash())),
+            Some(block.clone())
+        );
+        assert_eq!(
+            storage.header_by_hash_or_number(BlockHashOrNumber::Number(block.number)),
+            Some(block.clone())
+        );
+        assert_eq!(storage.best_block, block.number);
+        assert_eq!(storage.best_hash, block.hash());
+        assert_eq!(storage.best_header, block);
+
+        storage.clean_caches();
+        assert_eq!(storage.headers.get(&block.number), None);
+        assert_eq!(storage.hash_to_number.get(&block.hash()), None);
+        assert_eq!(storage.bodies.get(&block.hash()), None);
+    }
 }
