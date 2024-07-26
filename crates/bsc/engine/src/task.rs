@@ -1,5 +1,5 @@
 use crate::{client::ParliaClient, Storage};
-use reth_beacon_consensus::{BeaconEngineMessage, ForkchoiceStatus};
+use reth_beacon_consensus::{BeaconEngineMessage, ForkchoiceStatus, MIN_BLOCKS_FOR_PIPELINE_RUN};
 use reth_bsc_consensus::Parlia;
 use reth_chainspec::ChainSpec;
 use reth_engine_primitives::EngineTypes;
@@ -10,7 +10,6 @@ use reth_network_p2p::{
     priority::Priority,
 };
 use reth_primitives::{Block, BlockBody, BlockHashOrNumber, SealedHeader, B256};
-use reth_primitives_traits::constants::EPOCH_SLOTS;
 use reth_provider::{BlockReaderIdExt, CanonChainTracker, ParliaProvider};
 use reth_rpc_types::engine::ForkchoiceState;
 use std::{
@@ -284,7 +283,8 @@ impl<
                 }
 
                 let mut disconnected_headers = Vec::new();
-                let pipeline_sync = (trusted_header.number + EPOCH_SLOTS) < sealed_header.number;
+                let pipeline_sync =
+                    (trusted_header.number + MIN_BLOCKS_FOR_PIPELINE_RUN) < sealed_header.number;
                 if !pipeline_sync && (sealed_header.number - 1) > trusted_header.number {
                     let fetch_headers_result = match timeout(
                         fetch_header_timeout_duration,
