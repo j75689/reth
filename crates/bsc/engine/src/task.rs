@@ -238,6 +238,7 @@ impl<
                     .ok()
                     .flatten()
                     .unwrap_or_else(|| chain_spec.sealed_genesis_header());
+                debug!(target: "consensus::parlia", { trusted_header_number = ?trusted_header.number, trusted_header_hash = ?trusted_header.hash() }, "Trusted header");
 
                 // verify header and timestamp
                 // predict timestamp is the trusted header timestamp plus the block interval times
