@@ -41,7 +41,7 @@ enum ForkChoiceMessage {
 #[derive(Debug, Clone)]
 struct NewHeaderEvent {
     header: SealedHeader,
-    trusted_header: SealedHeader,
+    local_header: SealedHeader,
     pipeline_sync: bool,
 }
 
@@ -239,6 +239,12 @@ impl<
                     .flatten()
                     .unwrap_or_else(|| chain_spec.sealed_genesis_header());
                 debug!(target: "consensus::parlia", { trusted_header_number = ?trusted_header.number, trusted_header_hash = ?trusted_header.hash() }, "Trusted header");
+                let latest_unsafe_header = client
+                    .latest_header()
+                    .ok()
+                    .flatten()
+                    .unwrap_or_else(|| chain_spec.sealed_genesis_header());
+                debug!(target: "consensus::parlia", { latest_unsafe_header_number = ?latest_unsafe_header.number, latest_unsafe_header_hash = ?latest_unsafe_header.hash() }, "Latest unsafe header");
 
                 // verify header and timestamp
                 // predict timestamp is the trusted header timestamp plus the block interval times
@@ -349,7 +355,7 @@ impl<
                             // and finalized hash.
                             // this can make Block Sync Engine to use pipeline sync mode.
                             pipeline_sync,
-                            trusted_header: trusted_header.clone(),
+                            local_header: latest_unsafe_header.clone(),
                         }));
                     if result.is_err() {
                         error!(target: "consensus::parlia", "Failed to send new block event to
@@ -361,7 +367,7 @@ impl<
                 let result = chain_tracker_tx.send(ForkChoiceMessage::NewHeader(NewHeaderEvent {
                     header: sealed_header.clone(),
                     pipeline_sync,
-                    trusted_header: trusted_header.clone(),
+                    local_header: latest_unsafe_header.clone(),
                 }));
                 if result.is_err() {
                     error!(target: "consensus::parlia", "Failed to send new block event to chain tracker");
@@ -471,7 +477,7 @@ impl<
                         }
                         match msg.unwrap() {
                             ForkChoiceMessage::NewHeader(event) => {
-                                let new_header = event.trusted_header;
+                                let new_header = event.local_header;
 
                                 let snap = match snapshot_reader.snapshot(&new_header, None) {
                                     Ok(snap) => snap,
