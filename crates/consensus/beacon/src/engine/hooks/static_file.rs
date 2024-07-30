@@ -142,6 +142,14 @@ impl<DB: Database + 'static> EngineHook for StaticFileHook<DB> {
             return Poll::Pending
         };
 
+        // The chain state may be rewind, if the finalized block number is greater than the tip block number.
+        // In this case, we should wait until the finalized block number is less than or equal to the tip block number.
+        // To prevent the static file producer from producing static files for the wrong block and incrementing the index number.
+        if finalized_block_number >= ctx.tip_block_number {
+            trace!(target: "consensus::engine::hooks::static_file", ?ctx, "Finalized block number is greater than tip number");
+            return Poll::Pending
+        }
+
         // Try to spawn a static_file_producer
         match self.try_spawn_static_file_producer(finalized_block_number)? {
             Some(EngineHookEvent::NotReady) => return Poll::Pending,
