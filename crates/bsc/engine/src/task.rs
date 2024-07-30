@@ -233,18 +233,25 @@ impl<
                     }
                 }
                 let latest_header = header_option.unwrap();
-                let trusted_header = client
+                let finalized_header = client
                     .sealed_header_by_id(BlockId::Hash(RpcBlockHash::from(finalized_hash)))
                     .ok()
                     .flatten()
                     .unwrap_or_else(|| chain_spec.sealed_genesis_header());
-                debug!(target: "consensus::parlia", { trusted_header_number = ?trusted_header.number, trusted_header_hash = ?trusted_header.hash() }, "Trusted header");
+                debug!(target: "consensus::parlia", { finalized_header_number = ?finalized_header.number, finalized_header_hash = ?finalized_header.hash() }, "Latest finalized header");
                 let latest_unsafe_header = client
                     .latest_header()
                     .ok()
                     .flatten()
                     .unwrap_or_else(|| chain_spec.sealed_genesis_header());
                 debug!(target: "consensus::parlia", { latest_unsafe_header_number = ?latest_unsafe_header.number, latest_unsafe_header_hash = ?latest_unsafe_header.hash() }, "Latest unsafe header");
+
+                let mut trusted_header = latest_unsafe_header.clone();
+                // if parent hash is not equal to latest unsafe hash
+                // may be a fork chain detected, we need to trust the finalized header
+                if latest_header.parent_hash != latest_unsafe_header.hash() {
+                    trusted_header = finalized_header.clone();
+                }
 
                 // verify header and timestamp
                 // predict timestamp is the trusted header timestamp plus the block interval times
