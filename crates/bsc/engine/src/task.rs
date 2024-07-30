@@ -20,6 +20,7 @@ use std::{
 };
 use tokio::sync::Mutex;
 
+use reth_rpc_types::{BlockId, RpcBlockHash};
 use tokio::{
     signal,
     sync::{
@@ -147,6 +148,7 @@ impl<
             loop {
                 let read_storage = storage.read().await;
                 let best_header = read_storage.best_header.clone();
+                let finalized_hash = read_storage.best_finalized_hash;
                 drop(read_storage);
                 let mut engine_rx_guard = engine_rx.lock().await;
                 let mut info = BlockInfo {
@@ -231,16 +233,8 @@ impl<
                     }
                 }
                 let latest_header = header_option.unwrap();
-
-                // skip if parent hash is not equal to best hash
-                if latest_header.number == best_header.number + 1 &&
-                    latest_header.parent_hash != best_header.hash()
-                {
-                    continue;
-                }
-
                 let trusted_header = client
-                    .latest_header()
+                    .sealed_header_by_id(BlockId::Hash(RpcBlockHash::from(finalized_hash)))
                     .ok()
                     .flatten()
                     .unwrap_or_else(|| chain_spec.sealed_genesis_header());

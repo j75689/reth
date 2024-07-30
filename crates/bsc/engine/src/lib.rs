@@ -46,7 +46,8 @@ pub struct ParliaEngineBuilder<Provider, Engine: EngineTypes, P> {
     network_block_event_rx: Arc<Mutex<UnboundedReceiver<EngineMessage>>>,
     fetch_client: FetchClient,
     provider: Provider,
-    parlia_provider: P,
+    parlia: Parlia,
+    snapshot_reader: SnapshotReader<P>,
 }
 
 // === impl ParliaEngineBuilder ===
@@ -72,13 +73,26 @@ where
             .ok()
             .flatten()
             .unwrap_or_else(|| chain_spec.sealed_genesis_header());
+        let parlia = Parlia::new(chain_spec.clone(), cfg.clone());
+
+        let mut finalized_hash = None;
+        let mut safe_hash = None;
+        let snapshot_reader =
+            SnapshotReader::new(Arc::new(parlia_provider), Arc::new(parlia.clone()));
+        let snapshot_result = snapshot_reader.snapshot(&latest_header, None);
+        if snapshot_result.is_ok() {
+            let snap = snapshot_result.unwrap();
+            finalized_hash = Some(snap.vote_data.source_hash);
+            safe_hash = Some(snap.vote_data.target_hash);
+        }
 
         Self {
             chain_spec,
             cfg,
             provider,
-            parlia_provider,
-            storage: Storage::new(latest_header),
+            snapshot_reader,
+            parlia,
+            storage: Storage::new(latest_header, finalized_hash, safe_hash),
             to_engine,
             network_block_event_rx,
             fetch_client,
@@ -96,16 +110,16 @@ where
             network_block_event_rx,
             fetch_client,
             provider,
-            parlia_provider,
+            parlia,
+            snapshot_reader,
         } = self;
         let parlia_client = ParliaClient::new(storage.clone(), fetch_client);
-        let parlia = Parlia::new(chain_spec.clone(), cfg.clone());
         if start_engine_task {
             ParliaEngineTask::start(
                 chain_spec,
-                parlia.clone(),
+                parlia,
                 provider,
-                SnapshotReader::new(Arc::new(parlia_provider), Arc::new(parlia)),
+                snapshot_reader,
                 to_engine,
                 network_block_event_rx,
                 storage,
@@ -128,7 +142,14 @@ pub(crate) struct Storage {
 impl Storage {
     /// Initializes the [Storage] with the given best block. This should be initialized with the
     /// highest block in the chain, if there is a chain already stored on-disk.
-    fn new(best_block: SealedHeader) -> Self {
+    fn new(
+        best_block: SealedHeader,
+        finalized_hash: Option<B256>,
+        safe_hash: Option<B256>,
+    ) -> Self {
+        let best_finalized_hash = finalized_hash.unwrap_or_default();
+        let best_safe_hash = safe_hash.unwrap_or_default();
+
         let mut storage = StorageInner {
             best_hash: best_block.hash(),
             best_block: best_block.number,
@@ -136,8 +157,8 @@ impl Storage {
             headers: LimitedHashSet::new(STORAGE_CACHE_NUM),
             hash_to_number: LimitedHashSet::new(STORAGE_CACHE_NUM),
             bodies: LimitedHashSet::new(STORAGE_CACHE_NUM),
-            best_finalized_hash: B256::default(),
-            best_safe_hash: B256::default(),
+            best_finalized_hash,
+            best_safe_hash,
         };
         storage.headers.put(best_block.number, best_block.clone());
         storage.hash_to_number.put(best_block.hash(), best_block.number);
