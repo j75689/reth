@@ -2,7 +2,6 @@ use crate::{
     parlia::{VoteAddress, VoteAttestation, VoteData},
     Address, BlockNumber, Header, B256,
 };
-use reth_codecs::{main_codec, Compact};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 
@@ -10,8 +9,7 @@ use std::collections::{BTreeMap, HashMap};
 pub const CHECKPOINT_INTERVAL: u64 = 1024;
 
 /// record validators information
-#[main_codec]
-#[derive(Debug, Default, PartialEq, Eq, Clone)]
+#[derive(Debug, Default, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct ValidatorInfo {
     /// The index of the validator
     /// The index should offset by 1

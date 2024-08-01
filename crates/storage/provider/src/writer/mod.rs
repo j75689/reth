@@ -7,7 +7,7 @@ use reth_db::{
     Database,
 };
 use reth_errors::{ProviderError, ProviderResult};
-use reth_primitives::{BlockNumber, StorageEntry, U256};
+use reth_primitives::{parlia::Snapshot, BlockNumber, StorageEntry, U256};
 use reth_storage_api::ReceiptWriter;
 use reth_storage_errors::writer::StorageWriterError;
 use reth_trie::HashedPostStateSorted;
@@ -147,10 +147,12 @@ impl<'a, 'b, DB: Database> StorageWriter<'a, 'b, DB> {
     /// - `initial_block_number`: The starting block number.
     /// - `blocks`: An iterator over blocks, each block having a vector of optional receipts. If
     ///   `receipt` is `None`, it has been pruned.
+    /// - `snapshots`: A vector of snapshots to be written to the database.
     pub fn append_receipts_from_blocks(
         mut self,
         initial_block_number: BlockNumber,
         blocks: impl Iterator<Item = Vec<Option<reth_primitives::Receipt>>>,
+        snapshots: Vec<Snapshot>,
     ) -> ProviderResult<()> {
         self.ensure_database_writer()?;
         let mut bodies_cursor =
@@ -195,6 +197,14 @@ impl<'a, 'b, DB: Database> StorageWriter<'a, 'b, DB> {
                     )?;
                 }
             };
+        }
+
+        if !snapshots.is_empty() {
+            let mut snapshot_cursor =
+                self.database_writer().tx_ref().cursor_write::<tables::ParliaSnapshot>()?;
+            for snap in snapshots {
+                snapshot_cursor.upsert(snap.block_hash, snap)?;
+            }
         }
 
         Ok(())

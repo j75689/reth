@@ -7,12 +7,12 @@ use crate::{
     },
     writer::StorageWriter,
     AccountReader, BlockExecutionReader, BlockExecutionWriter, BlockHashReader, BlockNumReader,
-    BlockReader, BlockWriter, EvmEnvProvider, FinalizedBlockReader, FinalizedBlockWriter,
+    BlockReader, BlockWriter, Chain, EvmEnvProvider, FinalizedBlockReader, FinalizedBlockWriter,
     HashingWriter, HeaderProvider, HeaderSyncGap, HeaderSyncGapProvider, HistoricalStateProvider,
-    HistoryWriter, LatestStateProvider, OriginalValuesKnown, ProviderError, PruneCheckpointReader,
-    PruneCheckpointWriter, RequestsProvider, StageCheckpointReader, StateProviderBox, StateWriter,
-    StatsReader, StorageReader, TransactionVariant, TransactionsProvider, TransactionsProviderExt,
-    WithdrawalsProvider,
+    HistoryWriter, LatestStateProvider, OriginalValuesKnown, ParliaSnapshotReader, ProviderError,
+    PruneCheckpointReader, PruneCheckpointWriter, RequestsProvider, SidecarsProvider,
+    StageCheckpointReader, StateProviderBox, StateWriter, StatsReader, StorageReader,
+    TransactionVariant, TransactionsProvider, TransactionsProviderExt, WithdrawalsProvider,
 };
 use itertools::{izip, Itertools};
 use reth_chainspec::{ChainInfo, ChainSpec, EthereumHardforks};
@@ -1407,6 +1407,7 @@ impl<TX: DbTxMut + DbTx> DatabaseProvider<TX> {
         let block_withdrawals = self.take::<tables::BlockWithdrawals>(range.clone())?;
         let block_requests = self.take::<tables::BlockRequests>(range.clone())?;
         let block_tx = self.take_block_transaction_range(range.clone())?;
+        let block_sidecars = self.take::<tables::Sidecars>(range.clone())?;
 
         // rm HeaderTerminalDifficulties
         self.remove::<tables::HeaderTerminalDifficulties>(range)?;

@@ -4,12 +4,16 @@ use alloy_eips::eip4844::{Blob, BlobTransactionSidecar, Bytes48, BYTES_PER_BLOB}
 use alloy_primitives::B256;
 use alloy_rlp::{Decodable, Encodable, RlpDecodableWrapper, RlpEncodableWrapper};
 use bytes::{Buf, BufMut};
+use core::mem;
 use derive_more::{Deref, DerefMut, From, IntoIterator};
-use reth_codecs::{derive_arbitrary, main_codec, Compact};
+use reth_codecs::{derive_arbitrary, reth_codec, Compact};
 use revm_primitives::U256;
 use serde::{Deserialize, Serialize};
 
-#[main_codec(no_arbitrary)]
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+
+#[reth_codec(no_arbitrary)]
 #[derive_arbitrary]
 #[derive(
     Debug,
@@ -17,12 +21,14 @@ use serde::{Deserialize, Serialize};
     PartialEq,
     Eq,
     Default,
+    From,
     Deref,
     DerefMut,
-    From,
     IntoIterator,
     RlpEncodableWrapper,
     RlpDecodableWrapper,
+    Serialize,
+    Deserialize,
 )]
 pub struct BlobSidecars(Vec<BlobSidecar>);
 
@@ -35,13 +41,13 @@ impl BlobSidecars {
     /// Calculate the total size, including capacity, of the `BlobSidecars`.
     #[inline]
     pub fn total_size(&self) -> usize {
-        self.capacity() * std::mem::size_of::<BlobSidecar>()
+        self.capacity() * mem::size_of::<BlobSidecar>()
     }
 
     /// Calculate a heuristic for the in-memory size of the [`BlobSidecars`].
     #[inline]
     pub fn size(&self) -> usize {
-        self.len() * std::mem::size_of::<BlobSidecar>()
+        self.len() * mem::size_of::<BlobSidecar>()
     }
 }
 
@@ -124,27 +130,27 @@ impl Decodable for BlobSidecar {
 }
 
 impl Compact for BlobSidecar {
-    fn to_compact<B>(self, buf: &mut B) -> usize
+    fn to_compact<B>(&self, buf: &mut B) -> usize
     where
-        B: BufMut + AsMut<[u8]>,
+        B: bytes::BufMut + AsMut<[u8]>,
     {
         let mut len = 0;
 
         buf.put_u16(self.blob_transaction_sidecar.blobs.len() as u16);
         len += 2;
-        for item in self.blob_transaction_sidecar.blobs {
+        for item in &self.blob_transaction_sidecar.blobs {
             len += item.to_compact(buf);
         }
 
         buf.put_u16(self.blob_transaction_sidecar.commitments.len() as u16);
         len += 2;
-        for item in self.blob_transaction_sidecar.commitments {
+        for item in &self.blob_transaction_sidecar.commitments {
             len += item.to_compact(buf);
         }
 
         buf.put_u16(self.blob_transaction_sidecar.proofs.len() as u16);
         len += 2;
-        for item in self.blob_transaction_sidecar.proofs {
+        for item in &self.blob_transaction_sidecar.proofs {
             len += item.to_compact(buf);
         }
 

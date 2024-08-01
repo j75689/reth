@@ -52,6 +52,7 @@ pub static BSC_MAINNET: Lazy<Arc<ChainSpec>> = Lazy::new(|| {
         deposit_contract: None,
         base_fee_params: BaseFeeParamsKind::Constant(BaseFeeParams::new(1, 1)),
         prune_delete_limit: 3500,
+        ..Default::default()
     }
     .into()
 });
@@ -71,6 +72,7 @@ pub static BSC_TESTNET: Lazy<Arc<ChainSpec>> = Lazy::new(|| {
         deposit_contract: None,
         base_fee_params: BaseFeeParamsKind::Constant(BaseFeeParams::new(1, 1)),
         prune_delete_limit: 3500,
+        ..Default::default()
     }
     .into()
 });

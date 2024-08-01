@@ -25,6 +25,8 @@ reth-evm-bsc.workspace = true
 reth-bsc-consensus.workspace = true
 reth-primitives.workspace = true
 reth-config.workspace = true
+reth-rpc.workspace = true
+reth-node-api.workspace = true
 
 # misc
 eyre.workspace = true

@@ -5,6 +5,7 @@ use reth_basic_payload_builder::{BasicPayloadJobGenerator, BasicPayloadJobGenera
 use reth_bsc_consensus::Parlia;
 use reth_evm_bsc::{BscEvmConfig, BscExecutorProvider};
 use reth_network::NetworkHandle;
+use reth_node_api::{FullNodeComponents, NodeAddOns};
 use reth_node_builder::{
     components::{
         ComponentsBuilder, ConsensusBuilder, ExecutorBuilder, NetworkBuilder,
@@ -15,6 +16,7 @@ use reth_node_builder::{
 };
 use reth_payload_builder::{PayloadBuilderHandle, PayloadBuilderService};
 use reth_provider::CanonStateSubscriptions;
+use reth_rpc::EthApi;
 use reth_tracing::tracing::{debug, info};
 use reth_transaction_pool::{
     blobstore::DiskFileBlobStore, EthTransactionPool, TransactionPool,
@@ -54,6 +56,14 @@ impl NodeTypes for BscNode {
     type Engine = EthEngineTypes;
 }
 
+/// Add-ons w.r.t. l1 bsc.
+#[derive(Debug, Clone)]
+pub struct BSCAddOns;
+
+impl<N: FullNodeComponents> NodeAddOns<N> for BSCAddOns {
+    type EthApi = EthApi<N::Provider, N::Pool, NetworkHandle, N::Evm>;
+}
+
 impl<N> Node<N> for BscNode
 where
     N: FullNodeTypes<Engine = EthEngineTypes>,
@@ -67,7 +77,9 @@ where
         BscConsensusBuilder,
     >;
 
-    fn components_builder(self) -> Self::ComponentsBuilder {
+    type AddOns = BSCAddOns;
+
+    fn components_builder(&self) -> Self::ComponentsBuilder {
         Self::components()
     }
 }

@@ -21,15 +21,11 @@ impl StateWriter for ExecutionOutcome {
 
         StateReverts(reverts).write_to_db(provider_rw, self.first_block)?;
 
-        StorageWriter::new(Some(provider_rw), static_file_producer)
-            .append_receipts_from_blocks(self.first_block, self.receipts.into_iter())?;
-
-        if !self.snapshots.is_empty() {
-            let mut snapshot_cursor = tx.cursor_write::<tables::ParliaSnapshot>()?;
-            for snap in self.snapshots {
-                snapshot_cursor.upsert(snap.block_hash, snap)?;
-            }
-        }
+        StorageWriter::new(Some(provider_rw), static_file_producer).append_receipts_from_blocks(
+            self.first_block,
+            self.receipts.into_iter(),
+            self.snapshots,
+        )?;
 
         StateChanges(plain_state).write_to_db(provider_rw)?;
 

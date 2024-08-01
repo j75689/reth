@@ -74,11 +74,7 @@ impl ImportCommand {
 
         let Environment { provider_factory, config, .. } = self.env.init(AccessRights::RW)?;
 
-        #[cfg(feature = "bsc")]
-        let executor = executor!(provider_factory.chain_spec(), provider_factory.clone());
-        #[cfg(not(feature = "bsc"))]
-        let executor = executor!(provider_factory.chain_spec());
-        
+        let executor = executor(provider_factory.chain_spec());
         let consensus = Arc::new(EthBeaconConsensus::new(self.env.chain.clone()));
         info!(target: "reth::cli", "Consensus engine initialized");
 

@@ -1,7 +1,7 @@
 use crate::{alloy_primitives::wrap_fixed_bytes, keccak256, BlockNumber, B256};
 use alloy_rlp::{RlpDecodable, RlpEncodable};
 use bytes::Bytes;
-use reth_codecs::{impl_compact_for_wrapped_bytes, main_codec, Compact};
+use serde::{Deserialize, Serialize};
 
 /// max attestation extra length
 pub const MAX_ATTESTATION_EXTRA_LENGTH: usize = 256;
@@ -18,11 +18,10 @@ wrap_fixed_bytes!(
     pub struct VoteSignature<96>;
 );
 
-impl_compact_for_wrapped_bytes!(VoteAddress, VoteSignature);
-
-/// VoteData represents the vote range that validator voted for fast finality.
-#[main_codec]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default, RlpEncodable, RlpDecodable)]
+/// `VoteData` represents the vote range that validator voted for fast finality.
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Default, RlpEncodable, RlpDecodable, Serialize, Deserialize,
+)]
 pub struct VoteData {
     /// The source block number should be the latest justified block number.
     pub source_number: BlockNumber,
@@ -42,7 +41,7 @@ impl VoteData {
 }
 
 /// `VoteEnvelope` a single vote from validator.
-#[derive(Clone, Debug, PartialEq, Eq, RlpEncodable, RlpDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, RlpEncodable, RlpDecodable, Serialize, Deserialize)]
 pub struct VoteEnvelope {
     /// The BLS public key of the validator.
     pub vote_address: VoteAddress,
@@ -60,7 +59,7 @@ impl VoteEnvelope {
 }
 
 /// `VoteAttestation` represents the votes of super majority validators.
-#[derive(Clone, Debug, PartialEq, Eq, RlpEncodable, RlpDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, RlpEncodable, RlpDecodable, Serialize, Deserialize)]
 pub struct VoteAttestation {
     /// The bitset marks the voted validators.
     pub vote_address_set: ValidatorsBitSet,
