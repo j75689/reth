@@ -869,7 +869,7 @@ where
 
         // the old snapshots don't have turn length, make sure we initialize it with default
         // before accessing it
-        if snap.turn_length.is_none() {
+        if snap.turn_length.is_none() || snap.turn_length == Some(0) {
             snap.turn_length = Some(DEFAULT_TURN_LENGTH);
         }
 
