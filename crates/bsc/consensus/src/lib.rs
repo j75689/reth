@@ -323,7 +323,8 @@ impl Parlia {
         }
 
         let mut rng = if self.chain_spec.is_bohr_active_at_timestamp(header.timestamp) {
-            RngSource::new(header.number as i64 / snap.turn_length as i64)
+            let turn_length = snap.turn_length.unwrap_or(DEFAULT_TURN_LENGTH);
+            RngSource::new(header.number as i64 / turn_length as i64)
         } else {
             RngSource::new(snap.block_number as i64)
         };

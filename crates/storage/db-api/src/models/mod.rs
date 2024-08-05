@@ -416,7 +416,7 @@ mod tests {
             validators_map: HashMap::new(),
             recent_proposers: BTreeMap::new(),
             vote_data: VoteData::default(),
-            turn_length: DEFAULT_TURN_LENGTH,
+            turn_length: Some(DEFAULT_TURN_LENGTH),
         };
         snap.validators_map.insert(
             snap.validators[0],

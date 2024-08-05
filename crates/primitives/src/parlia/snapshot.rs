@@ -40,7 +40,8 @@ pub struct Snapshot {
     /// record the block attestation's vote data
     pub vote_data: VoteData,
     /// record length of `turn`
-    pub turn_length: u8,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub turn_length: Option<u8>,
 }
 
 impl Snapshot {
@@ -81,7 +82,7 @@ impl Snapshot {
             validators_map,
             recent_proposers: Default::default(),
             vote_data: Default::default(),
-            turn_length: DEFAULT_TURN_LENGTH,
+            turn_length: Some(DEFAULT_TURN_LENGTH),
         }
     }
 
@@ -124,7 +125,7 @@ impl Snapshot {
         {
             new_validators.sort();
             if let Some(turn_length) = turn_length {
-                snap.turn_length = turn_length;
+                snap.turn_length = Some(turn_length);
             }
 
             if is_bohr {
@@ -174,13 +175,15 @@ impl Snapshot {
 
     /// Returns the number of blocks after which the miner history should be checked
     pub fn miner_history_check_len(&self) -> u64 {
-        (self.validators.len() / 2 + 1) as u64 * self.turn_length as u64 - 1
+        let turn_length = u64::from(self.turn_length.unwrap_or(DEFAULT_TURN_LENGTH));
+        (self.validators.len() / 2 + 1) as u64 * turn_length - 1
     }
 
     /// Returns the validator who should propose the block
     pub fn inturn_validator(&self) -> Address {
+        let turn_length = u64::from(self.turn_length.unwrap_or(DEFAULT_TURN_LENGTH));
         self.validators
-            [((self.block_number + 1) as usize) / self.turn_length as usize % self.validators.len()]
+            [((self.block_number + 1) as usize) / turn_length as usize % self.validators.len()]
     }
 
     /// Return index of the validator's index in validators list
@@ -225,7 +228,8 @@ impl Snapshot {
         counts: &HashMap<Address, u8>,
     ) -> bool {
         if let Some(&seen_times) = counts.get(&validator) {
-            if seen_times >= self.turn_length {
+            let turn_length = self.turn_length.unwrap_or(DEFAULT_TURN_LENGTH);
+            if seen_times >= turn_length {
                 return true;
             }
         }

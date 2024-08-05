@@ -869,8 +869,8 @@ where
 
         // the old snapshots don't have turn length, make sure we initialize it with default
         // before accessing it
-        if snap.turn_length == 0 {
-            snap.turn_length = DEFAULT_TURN_LENGTH;
+        if snap.turn_length.is_none() {
+            snap.turn_length = Some(DEFAULT_TURN_LENGTH);
         }
 
         // apply skip headers
