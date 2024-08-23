@@ -30,6 +30,7 @@ use reth_trie::{hashed_cursor::HashedPostStateCursorFactory, StateRoot};
 use std::{
     collections::{btree_map::Entry, BTreeMap, HashSet},
     sync::Arc,
+    time::Instant,
 };
 use tracing::{debug, error, info, instrument, trace, warn};
 
@@ -1219,7 +1220,8 @@ where
         let hashed_state = state.hash_state_slow();
         let prefix_sets = hashed_state.construct_prefix_sets().freeze();
         let hashed_state_sorted = hashed_state.into_sorted();
-
+        
+        let mut start = Instant::now();
         // Compute state root or retrieve cached trie updates before opening write transaction.
         let block_hash_numbers =
             blocks.iter().map(|(number, b)| (number, b.hash())).collect::<Vec<_>>();
@@ -1259,6 +1261,10 @@ where
                 trie_updates
             }
         };
+        let elapsed = start.elapsed();
+        info!(target: "blockchain_tree", elapsed = ?elapsed, "Computed state root for canonical chain");
+
+        start = Instant::now();
         recorder.record_relative(MakeCanonicalAction::RetrieveStateTrieUpdates);
 
         let provider_rw = self.externals.provider_factory.provider_rw()?;
@@ -1272,6 +1278,9 @@ where
             .map_err(|e| CanonicalError::CanonicalCommit(e.to_string()))?;
 
         provider_rw.commit()?;
+
+        let elapsed = start.elapsed();
+        info!(target: "blockchain_tree", elapsed = ?elapsed, "Committed canonical chain to database");
         recorder.record_relative(MakeCanonicalAction::CommitCanonicalChainToDatabase);
 
         Ok(())
