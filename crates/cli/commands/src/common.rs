@@ -50,7 +50,8 @@ pub struct EnvironmentArgs {
     #[command(flatten)]
     pub db: DatabaseArgs,
 
-    
+    #[arg(long)]
+    disable_hashing_stages: bool,
 }
 
 impl EnvironmentArgs {
@@ -147,7 +148,7 @@ impl EnvironmentArgs {
                     NoopBlockExecutorProvider::default(),
                     config.stages.clone(),
                     prune_modes.clone(),
-                    false,
+                    self.disable_hashing_stages,
                 ))
                 .build(factory.clone(), StaticFileProducer::new(factory.clone(), prune_modes));
 
