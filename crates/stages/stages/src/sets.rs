@@ -137,7 +137,12 @@ where
     ) -> StageSetBuilder<DB> {
         StageSetBuilder::default()
             .add_set(default_offline)
-            .add_set(OfflineStages::new(executor_factory, stages_config, prune_modes, disable_hashing_stages))
+            .add_set(OfflineStages::new(
+                executor_factory,
+                stages_config,
+                prune_modes,
+                disable_hashing_stages,
+            ))
             .add_stage(FinishStage)
     }
 }
@@ -300,9 +305,11 @@ where
         .add_stage_opt(self.prune_modes.sender_recovery.map(|prune_mode| {
             PruneSenderRecoveryStage::new(prune_mode, self.stages_config.prune.commit_threshold)
         }))
-        .add_set_opt(self.disable_hashing.not().then(|| {
-            HashingStages { stages_config: self.stages_config.clone() }
-        }))
+        .add_set_opt(
+            self.disable_hashing
+                .not()
+                .then(|| HashingStages { stages_config: self.stages_config.clone() }),
+        )
         .add_set(HistoryIndexingStages {
             stages_config: self.stages_config.clone(),
             prune_modes: self.prune_modes.clone(),

@@ -128,9 +128,14 @@ impl Command {
 
         let builder = if self.offline {
             Pipeline::builder().add_stages(
-                OfflineStages::new(executor, config.stages, PruneModes::default(), self.disable_hashing_stages)
-                    .builder()
-                    .disable(reth_stages::StageId::SenderRecovery),
+                OfflineStages::new(
+                    executor,
+                    config.stages,
+                    PruneModes::default(),
+                    self.disable_hashing_stages,
+                )
+                .builder()
+                .disable(reth_stages::StageId::SenderRecovery),
             )
         } else {
             Pipeline::builder().with_tip_sender(tip_tx).add_stages(

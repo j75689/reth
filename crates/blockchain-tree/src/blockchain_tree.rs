@@ -180,7 +180,7 @@ where
     }
 
     /// Set the merkle root calculation to be disabled.
-    /// 
+    ///
     /// This is helpful when the merkle root is taking too long to calculate.
     pub fn disable_merkle_root_calculation(mut self) -> Self {
         self.disable_merkle_root_calculation = true;
@@ -1268,8 +1268,8 @@ where
                         .externals
                         .provider_factory
                         .provider()?
-                        // State root calculation can take a while, and we're sure no write transaction
-                        // will be open in parallel. See https://github.com/paradigmxyz/reth/issues/6168.
+                        // State root calculation can take a while, and we're sure no write
+                        // transaction will be open in parallel. See https://github.com/paradigmxyz/reth/issues/6168.
                         .disable_long_read_transaction_safety();
                     let (state_root, trie_updates) = StateRoot::from_tx(provider.tx_ref())
                         .with_hashed_cursor_factory(HashedPostStateCursorFactory::new(
