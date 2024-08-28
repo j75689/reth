@@ -95,7 +95,7 @@ impl ImportOpCommand {
                 Arc::new(file_client),
                 StaticFileProducer::new(provider_factory.clone(), PruneModes::default()),
                 true,
-                self.disable_hash_stages,
+                self.disable_hashing_stages,
             )
             .await?;
 
