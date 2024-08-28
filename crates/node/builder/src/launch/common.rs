@@ -398,7 +398,7 @@ where
                     NoopBlockExecutorProvider::default(),
                     self.toml_config().stages.clone(),
                     self.prune_modes(),
-                    false,
+                    self.node_config().disable_hashing_stages,
                 ))
                 .build(
                     factory.clone(),

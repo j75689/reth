@@ -148,7 +148,7 @@ impl Command {
                     executor.clone(),
                     stage_conf.clone(),
                     prune_modes.clone(),
-                    false,
+                    self.disable_hashing_stages,
                 )
                 .set(ExecutionStage::new(
                     executor,
