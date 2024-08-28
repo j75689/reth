@@ -182,7 +182,7 @@ where
     /// Set the merkle root calculation to be disabled.
     ///
     /// This is helpful when the merkle root is taking too long to calculate.
-    pub fn disable_merkle_root_calculation(mut self) -> Self {
+    pub const fn disable_merkle_root_calculation(mut self) -> Self {
         self.disable_merkle_root_calculation = true;
         self
     }

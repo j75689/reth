@@ -164,6 +164,7 @@ impl ImportCommand {
 ///
 /// If configured to execute, all stages will run. Otherwise, only stages that don't require state
 /// will run.
+#[allow(clippy::too_many_arguments)]
 pub fn build_import_pipeline<DB, C, E>(
     config: &Config,
     provider_factory: ProviderFactory<DB>,

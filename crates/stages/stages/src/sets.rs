@@ -85,7 +85,7 @@ pub struct DefaultStages<Provider, H, B, EF> {
     stages_config: StageConfig,
     /// Prune configuration for every segment that can be pruned
     prune_modes: PruneModes,
-    /// Disable hashing stages(Merkle, AccountHashing, StorageHashing)
+    /// Disable hashing stages(`Merkle`, `AccountHashing`, `StorageHashing`)
     disable_hashing_stages: bool,
 }
 
@@ -273,7 +273,7 @@ pub struct OfflineStages<EF> {
     stages_config: StageConfig,
     /// Prune configuration for every segment that can be pruned
     prune_modes: PruneModes,
-    /// Disable hashing stages(Merkle, AccountHashing, StorageHashing)
+    /// Disable hashing stages(`Merkle`, `AccountHashing`, `StorageHashing`)
     disable_hashing: bool,
 }
 
