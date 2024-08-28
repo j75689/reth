@@ -26,7 +26,7 @@ use reth_provider::{
 use reth_prune_types::PruneModes;
 use reth_stages_api::{MetricEvent, MetricEventsSender};
 use reth_storage_errors::provider::{ProviderResult, RootMismatch};
-use reth_trie::{hashed_cursor::HashedPostStateCursorFactory, StateRoot};
+use reth_trie::{hashed_cursor::HashedPostStateCursorFactory, updates::TrieUpdates, StateRoot};
 use std::{
     collections::{btree_map::Entry, BTreeMap, HashSet},
     sync::Arc,
@@ -74,6 +74,8 @@ pub struct BlockchainTree<DB, E> {
     metrics: TreeMetrics,
     /// Whether to enable prefetch when execute block
     enable_prefetch: bool,
+    /// Disable merkle root calculation for blocks.
+    disable_merkle_root_calculation: bool,
 }
 
 impl<DB, E> BlockchainTree<DB, E> {
@@ -146,6 +148,7 @@ where
             sync_metrics_tx: None,
             metrics: Default::default(),
             enable_prefetch: false,
+            disable_merkle_root_calculation: false,
         })
     }
 
@@ -173,6 +176,14 @@ where
     /// Enable prefetch.
     pub const fn enable_prefetch(mut self) -> Self {
         self.enable_prefetch = true;
+        self
+    }
+
+    /// Set the merkle root calculation to be disabled.
+    /// 
+    /// This is helpful when the merkle root is taking too long to calculate.
+    pub fn disable_merkle_root_calculation(mut self) -> Self {
+        self.disable_merkle_root_calculation = true;
         self
     }
 
@@ -394,7 +405,7 @@ where
     fn try_append_canonical_chain(
         &mut self,
         block: SealedBlockWithSenders,
-        block_validation_kind: BlockValidationKind,
+        mut block_validation_kind: BlockValidationKind,
     ) -> Result<BlockStatus, InsertBlockErrorKind> {
         let parent = block.parent_num_hash();
         let block_num_hash = block.num_hash();
@@ -435,6 +446,10 @@ where
             BlockAttachment::HistoricalFork
         };
 
+        if self.disable_merkle_root_calculation {
+            block_validation_kind = BlockValidationKind::SkipStateRootValidation;
+        }
+
         let chain = AppendableChain::new_canonical_fork(
             block,
             &parent_header,
@@ -460,7 +475,7 @@ where
         &mut self,
         block: SealedBlockWithSenders,
         chain_id: BlockchainId,
-        block_validation_kind: BlockValidationKind,
+        mut block_validation_kind: BlockValidationKind,
     ) -> Result<BlockStatus, InsertBlockErrorKind> {
         let block_num_hash = block.num_hash();
         debug!(target: "blockchain_tree", ?block_num_hash, ?chain_id, "Inserting block into side chain");
@@ -480,6 +495,10 @@ where
 
         let chain_tip = parent_chain.tip().hash();
         let canonical_chain = self.state.block_indices.canonical_chain();
+
+        if self.disable_merkle_root_calculation {
+            block_validation_kind = BlockValidationKind::SkipStateRootValidation;
+        }
 
         // append the block if it is continuing the side chain.
         let block_attachment = if chain_tip == block.parent_hash {
@@ -1232,46 +1251,49 @@ where
         let prefix_sets = hashed_state.construct_prefix_sets().freeze();
         let hashed_state_sorted = hashed_state.into_sorted();
 
-        // Compute state root or retrieve cached trie updates before opening write transaction.
-        let block_hash_numbers =
-            blocks.iter().map(|(number, b)| (number, b.hash())).collect::<Vec<_>>();
-        let trie_updates = match chain_trie_updates {
-            Some(updates) => {
-                debug!(target: "blockchain_tree", blocks = ?block_hash_numbers, "Using cached trie updates");
-                self.metrics.trie_updates_insert_cached.increment(1);
-                updates
-            }
-            None => {
-                debug!(target: "blockchain_tree", blocks = ?block_hash_numbers, "Recomputing state root for insert");
-                let provider = self
-                    .externals
-                    .provider_factory
-                    .provider()?
-                    // State root calculation can take a while, and we're sure no write transaction
-                    // will be open in parallel. See https://github.com/paradigmxyz/reth/issues/6168.
-                    .disable_long_read_transaction_safety();
-                let (state_root, trie_updates) = StateRoot::from_tx(provider.tx_ref())
-                    .with_hashed_cursor_factory(HashedPostStateCursorFactory::new(
-                        provider.tx_ref(),
-                        &hashed_state_sorted,
-                    ))
-                    .with_prefix_sets(prefix_sets)
-                    .root_with_updates()
-                    .map_err(Into::<BlockValidationError>::into)?;
-                let tip = blocks.tip();
-                if state_root != tip.state_root {
-                    return Err(ProviderError::StateRootMismatch(Box::new(RootMismatch {
-                        root: GotExpected { got: state_root, expected: tip.state_root },
-                        block_number: tip.number,
-                        block_hash: tip.hash(),
-                    }))
-                    .into())
+        let mut trie_updates = TrieUpdates::default();
+        if !self.disable_merkle_root_calculation {
+            // Compute state root or retrieve cached trie updates before opening write transaction.
+            let block_hash_numbers =
+                blocks.iter().map(|(number, b)| (number, b.hash())).collect::<Vec<_>>();
+            trie_updates = match chain_trie_updates {
+                Some(updates) => {
+                    debug!(target: "blockchain_tree", blocks = ?block_hash_numbers, "Using cached trie updates");
+                    self.metrics.trie_updates_insert_cached.increment(1);
+                    updates
                 }
-                self.metrics.trie_updates_insert_recomputed.increment(1);
-                trie_updates
-            }
-        };
-        recorder.record_relative(MakeCanonicalAction::RetrieveStateTrieUpdates);
+                None => {
+                    debug!(target: "blockchain_tree", blocks = ?block_hash_numbers, "Recomputing state root for insert");
+                    let provider = self
+                        .externals
+                        .provider_factory
+                        .provider()?
+                        // State root calculation can take a while, and we're sure no write transaction
+                        // will be open in parallel. See https://github.com/paradigmxyz/reth/issues/6168.
+                        .disable_long_read_transaction_safety();
+                    let (state_root, trie_updates) = StateRoot::from_tx(provider.tx_ref())
+                        .with_hashed_cursor_factory(HashedPostStateCursorFactory::new(
+                            provider.tx_ref(),
+                            &hashed_state_sorted,
+                        ))
+                        .with_prefix_sets(prefix_sets)
+                        .root_with_updates()
+                        .map_err(Into::<BlockValidationError>::into)?;
+                    let tip = blocks.tip();
+                    if state_root != tip.state_root {
+                        return Err(ProviderError::StateRootMismatch(Box::new(RootMismatch {
+                            root: GotExpected { got: state_root, expected: tip.state_root },
+                            block_number: tip.number,
+                            block_hash: tip.hash(),
+                        }))
+                        .into())
+                    }
+                    self.metrics.trie_updates_insert_recomputed.increment(1);
+                    trie_updates
+                }
+            };
+            recorder.record_relative(MakeCanonicalAction::RetrieveStateTrieUpdates);
+        }
 
         let provider_rw = self.externals.provider_factory.provider_rw()?;
         provider_rw

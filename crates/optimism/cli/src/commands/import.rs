@@ -35,6 +35,9 @@ pub struct ImportOpCommand {
     /// remaining stages are executed.
     #[arg(value_name = "IMPORT_PATH", verbatim_doc_comment)]
     path: PathBuf,
+
+    #[arg(long)]
+    disable_hashing_stages: bool,
 }
 
 impl ImportOpCommand {
@@ -92,6 +95,7 @@ impl ImportOpCommand {
                 Arc::new(file_client),
                 StaticFileProducer::new(provider_factory.clone(), PruneModes::default()),
                 true,
+                self.disable_hash_stages,
             )
             .await?;
 

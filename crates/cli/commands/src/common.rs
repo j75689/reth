@@ -49,6 +49,8 @@ pub struct EnvironmentArgs {
     /// All database related arguments
     #[command(flatten)]
     pub db: DatabaseArgs,
+
+    
 }
 
 impl EnvironmentArgs {
@@ -145,6 +147,7 @@ impl EnvironmentArgs {
                     NoopBlockExecutorProvider::default(),
                     config.stages.clone(),
                     prune_modes.clone(),
+                    false,
                 ))
                 .build(factory.clone(), StaticFileProducer::new(factory.clone(), prune_modes));
 

@@ -110,6 +110,10 @@ pub struct NodeCommand<Ext: clap::Args + fmt::Debug = NoArgs> {
     /// Enable prefetch when executing block
     #[arg(long, default_value_t = false)]
     pub enable_prefetch: bool,
+    
+    /// Disable hashing stage
+    #[arg(long, default_value_t = false)]
+    pub disable_hashing_stages: bool,
 }
 
 impl NodeCommand {
@@ -157,8 +161,8 @@ impl<Ext: clap::Args + fmt::Debug> NodeCommand<Ext> {
             pruning,
             ext,
             enable_prefetch,
+            disable_hashing_stages,
         } = self;
-
         // set up node config
         let mut node_config = NodeConfig {
             datadir,
@@ -175,6 +179,7 @@ impl<Ext: clap::Args + fmt::Debug> NodeCommand<Ext> {
             dev,
             pruning,
             enable_prefetch,
+            disable_hashing_stages,
         };
 
         // Register the prometheus recorder before creating the database,

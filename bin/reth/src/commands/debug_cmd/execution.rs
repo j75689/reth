@@ -51,6 +51,9 @@ pub struct Command {
     /// Defaults to `1000`.
     #[arg(long, default_value = "1000")]
     pub interval: u64,
+
+    #[arg(long)]
+    disable_hashing_stages: bool,
 }
 
 impl Command {
@@ -97,6 +100,7 @@ impl Command {
                     executor.clone(),
                     stage_conf.clone(),
                     prune_modes.clone(),
+                    self.disable_hashing_stages,
                 )
                 .set(ExecutionStage::new(
                     executor,

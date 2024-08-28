@@ -138,6 +138,18 @@ where
         self
     }
 
+    /// Adds the given [`StageSet`] at the end of this set if it's [`Some`].
+    ///
+    /// If a stage is in both sets, it is removed from its previous place in this set. Because of
+    /// this, it is advisable to merge sets first and re-order stages after if needed.
+    pub fn add_set_opt<Set: StageSet<DB>>(self, set: Option<Set>) -> Self {
+        if let Some(set) = set {
+            self.add_set(set)
+        } else {
+            self
+        }
+    }
+
     /// Adds the given [`Stage`] before the stage with the given [`StageId`].
     ///
     /// If the stage was already in the group, it is removed from its previous place.

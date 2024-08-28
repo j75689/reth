@@ -398,6 +398,7 @@ where
                     NoopBlockExecutorProvider::default(),
                     self.toml_config().stages.clone(),
                     self.prune_modes(),
+                    false,
                 ))
                 .build(
                     factory.clone(),
@@ -640,6 +641,7 @@ where
             consensus.clone(),
             components.block_executor().clone(),
         );
+        
         let mut tree =
             BlockchainTree::new(tree_externals, *self.tree_config(), self.prune_modes())?
                 .with_sync_metrics_tx(self.sync_metrics_tx())
@@ -651,6 +653,10 @@ where
 
         if self.node_config().enable_prefetch {
             tree = tree.enable_prefetch();
+        }
+
+        if self.node_config().disable_hashing_stages {
+            tree = tree.disable_merkle_root_calculation();
         }
 
         let blockchain_tree = Arc::new(ShareableBlockchainTree::new(tree));

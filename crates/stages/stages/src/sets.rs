@@ -28,7 +28,7 @@
 //!     StaticFileProducer::new(provider_factory.clone(), PruneModes::default());
 //! // Build a pipeline with all offline stages.
 //! let pipeline = Pipeline::builder()
-//!     .add_stages(OfflineStages::new(exec, StageConfig::default(), PruneModes::default()))
+//!     .add_stages(OfflineStages::new(exec, StageConfig::default(), PruneModes::default(), false))
 //!     .build(provider_factory, static_file_producer);
 //!
 //! # }
@@ -85,6 +85,8 @@ pub struct DefaultStages<Provider, H, B, EF> {
     stages_config: StageConfig,
     /// Prune configuration for every segment that can be pruned
     prune_modes: PruneModes,
+    /// Disable hashing stages(Merkle, AccountHashing, StorageHashing)
+    disable_hashing_stages: bool,
 }
 
 impl<Provider, H, B, E> DefaultStages<Provider, H, B, E> {
@@ -99,6 +101,7 @@ impl<Provider, H, B, E> DefaultStages<Provider, H, B, E> {
         executor_factory: E,
         stages_config: StageConfig,
         prune_modes: PruneModes,
+        disable_hashing_stages: bool,
     ) -> Self
     where
         E: BlockExecutorProvider,
@@ -115,6 +118,7 @@ impl<Provider, H, B, E> DefaultStages<Provider, H, B, E> {
             executor_factory,
             stages_config,
             prune_modes,
+            disable_hashing_stages,
         }
     }
 }
@@ -129,10 +133,11 @@ where
         executor_factory: E,
         stages_config: StageConfig,
         prune_modes: PruneModes,
+        disable_hashing_stages: bool,
     ) -> StageSetBuilder<DB> {
         StageSetBuilder::default()
             .add_set(default_offline)
-            .add_set(OfflineStages::new(executor_factory, stages_config, prune_modes))
+            .add_set(OfflineStages::new(executor_factory, stages_config, prune_modes, disable_hashing_stages))
             .add_stage(FinishStage)
     }
 }
@@ -151,6 +156,7 @@ where
             self.executor_factory,
             self.stages_config.clone(),
             self.prune_modes,
+            self.disable_hashing_stages,
         )
     }
 }
@@ -262,6 +268,8 @@ pub struct OfflineStages<EF> {
     stages_config: StageConfig,
     /// Prune configuration for every segment that can be pruned
     prune_modes: PruneModes,
+    /// Disable hashing stages(Merkle, AccountHashing, StorageHashing)
+    disable_hashing: bool,
 }
 
 impl<EF> OfflineStages<EF> {
@@ -270,8 +278,9 @@ impl<EF> OfflineStages<EF> {
         executor_factory: EF,
         stages_config: StageConfig,
         prune_modes: PruneModes,
+        disable_hashing: bool,
     ) -> Self {
-        Self { executor_factory, stages_config, prune_modes }
+        Self { executor_factory, stages_config, prune_modes, disable_hashing }
     }
 }
 
@@ -291,7 +300,9 @@ where
         .add_stage_opt(self.prune_modes.sender_recovery.map(|prune_mode| {
             PruneSenderRecoveryStage::new(prune_mode, self.stages_config.prune.commit_threshold)
         }))
-        .add_set(HashingStages { stages_config: self.stages_config.clone() })
+        .add_set_opt(self.disable_hashing.not().then(|| {
+            HashingStages { stages_config: self.stages_config.clone() }
+        }))
         .add_set(HistoryIndexingStages {
             stages_config: self.stages_config.clone(),
             prune_modes: self.prune_modes.clone(),

@@ -33,6 +33,7 @@ pub(crate) async fn build_import_pipeline<DB, C>(
     file_client: Arc<FileClient>,
     static_file_producer: StaticFileProducer<DB>,
     disable_exec: bool,
+    disable_hashing_stages: bool,
 ) -> eyre::Result<(Pipeline<DB>, impl Stream<Item = NodeEvent>)>
 where
     DB: Database + Clone + Unpin + 'static,
@@ -84,6 +85,7 @@ where
                 executor,
                 config.stages.clone(),
                 PruneModes::default(),
+                disable_hashing_stages,
             )
             .builder()
             .disable_all_if(&StageId::STATE_REQUIRED, || disable_exec),

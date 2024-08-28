@@ -42,6 +42,9 @@ pub struct Command {
     /// unwound.
     #[arg(long)]
     offline: bool,
+
+    #[arg(long)]
+    disable_hashing_stages: bool,
 }
 
 impl Command {
@@ -125,7 +128,7 @@ impl Command {
 
         let builder = if self.offline {
             Pipeline::builder().add_stages(
-                OfflineStages::new(executor, config.stages, PruneModes::default())
+                OfflineStages::new(executor, config.stages, PruneModes::default(), self.disable_hashing_stages)
                     .builder()
                     .disable(reth_stages::StageId::SenderRecovery),
             )
@@ -140,6 +143,7 @@ impl Command {
                     executor.clone(),
                     stage_conf.clone(),
                     prune_modes.clone(),
+                    false,
                 )
                 .set(ExecutionStage::new(
                     executor,

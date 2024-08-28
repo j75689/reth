@@ -36,6 +36,7 @@ pub fn build_networked_pipeline<DB, Client, Executor>(
     static_file_producer: StaticFileProducer<DB>,
     executor: Executor,
     exex_manager_handle: ExExManagerHandle,
+    disable_hash_stages: bool,
 ) -> eyre::Result<Pipeline<DB>>
 where
     DB: Database + Unpin + Clone + 'static,
@@ -63,6 +64,7 @@ where
         static_file_producer,
         executor,
         exex_manager_handle,
+        disable_hash_stages,
     )?;
 
     Ok(pipeline)
@@ -82,6 +84,7 @@ pub fn build_pipeline<DB, H, B, Executor>(
     static_file_producer: StaticFileProducer<DB>,
     executor: Executor,
     exex_manager_handle: ExExManagerHandle,
+    disable_hashing_stages: bool,
 ) -> eyre::Result<Pipeline<DB>>
 where
     DB: Database + Clone + 'static,
@@ -113,6 +116,7 @@ where
                 executor.clone(),
                 stage_config.clone(),
                 prune_modes.clone(),
+                disable_hashing_stages,
             )
             .set(
                 ExecutionStage::new(
