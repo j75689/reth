@@ -10,6 +10,6 @@ pub struct PerformanceOptimizationArgs {
     /// This flag is intended for performance optimization when importing blocks from trusted
     /// sources.
     /// **Warning: This option compromises the validation of chain data. Use with caution.**
-    #[arg(long = "skip-state-root-validation", default_value_t = false)]
+    #[arg(long = "optimize.skip-state-root-validation", default_value_t = false)]
     pub skip_state_root_validation: bool,
 }
