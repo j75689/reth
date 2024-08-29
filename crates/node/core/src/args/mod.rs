@@ -56,6 +56,10 @@ pub use datadir_args::DatadirArgs;
 mod benchmark_args;
 pub use benchmark_args::BenchmarkArgs;
 
+/// PerformanceOptimizationArgs struct for configuring performance optimization
+mod performance_optimization;
+pub use performance_optimization::PerformanceOptimizationArgs;
+
 pub mod utils;
 
 pub mod types;

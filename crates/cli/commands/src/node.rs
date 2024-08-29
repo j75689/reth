@@ -10,7 +10,7 @@ use reth_node_core::{
     args::{
         utils::{chain_help, chain_value_parser, SUPPORTED_CHAINS},
         DatabaseArgs, DatadirArgs, DebugArgs, DevArgs, NetworkArgs, PayloadBuilderArgs,
-        PruningArgs, RpcServerArgs, TxPoolArgs,
+        PerformanceOptimizationArgs, PruningArgs, RpcServerArgs, TxPoolArgs,
     },
     node_config::NodeConfig,
     version,
@@ -111,9 +111,9 @@ pub struct NodeCommand<Ext: clap::Args + fmt::Debug = NoArgs> {
     #[arg(long, default_value_t = false)]
     pub enable_prefetch: bool,
     
-    /// Disable hashing stage
-    #[arg(long, default_value_t = false)]
-    pub skip_state_root_validation: bool,
+    /// All performance optimization related arguments
+    #[command(flatten)]
+    pub performance_optimization: PerformanceOptimizationArgs,
 }
 
 impl NodeCommand {
@@ -161,7 +161,7 @@ impl<Ext: clap::Args + fmt::Debug> NodeCommand<Ext> {
             pruning,
             ext,
             enable_prefetch,
-            skip_state_root_validation,
+            performance_optimization,
         } = self;
         // set up node config
         let mut node_config = NodeConfig {
@@ -179,7 +179,7 @@ impl<Ext: clap::Args + fmt::Debug> NodeCommand<Ext> {
             dev,
             pruning,
             enable_prefetch,
-            skip_state_root_validation,
+            skip_state_root_validation: performance_optimization.skip_state_root_validation,
         };
 
         // Register the prometheus recorder before creating the database,
