@@ -51,9 +51,6 @@ pub struct Command {
     /// Defaults to `1000`.
     #[arg(long, default_value = "1000")]
     pub interval: u64,
-
-    #[arg(long)]
-    skip_state_root_validation: bool,
 }
 
 impl Command {
@@ -100,7 +97,7 @@ impl Command {
                     executor.clone(),
                     stage_conf.clone(),
                     prune_modes.clone(),
-                    self.skip_state_root_validation,
+                    self.env.performance_optimization.skip_state_root_validation,
                 )
                 .set(ExecutionStage::new(
                     executor,
