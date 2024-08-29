@@ -6,9 +6,10 @@ use clap::Args;
 #[derive(Debug, Clone, Args, PartialEq, Eq, Default)]
 #[command(next_help_heading = "Performance Optimization")]
 pub struct PerformanceOptimizationArgs {
-    /// Skip state root validation during block import.
-    /// This flag is useful for performance optimization when importing blocks from trusted
+    /// Skips state root validation during block import.
+    /// This flag is intended for performance optimization when importing blocks from trusted
     /// sources.
+    /// **Warning: This option compromises the validation of chain data. Use with caution.**
     #[arg(long = "skip-state-root-validation", default_value_t = false)]
     pub skip_state_root_validation: bool,
 }
