@@ -35,9 +35,6 @@ pub struct ImportOpCommand {
     /// remaining stages are executed.
     #[arg(value_name = "IMPORT_PATH", verbatim_doc_comment)]
     path: PathBuf,
-
-    #[arg(long)]
-    skip_state_root_validation: bool,
 }
 
 impl ImportOpCommand {
@@ -95,7 +92,7 @@ impl ImportOpCommand {
                 Arc::new(file_client),
                 StaticFileProducer::new(provider_factory.clone(), PruneModes::default()),
                 true,
-                self.skip_state_root_validation,
+                self.env.performance_optimization.skip_state_root_validation,
             )
             .await?;
 
