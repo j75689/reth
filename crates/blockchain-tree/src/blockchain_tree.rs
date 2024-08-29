@@ -26,7 +26,10 @@ use reth_provider::{
 use reth_prune_types::PruneModes;
 use reth_stages_api::{MetricEvent, MetricEventsSender};
 use reth_storage_errors::provider::{ProviderResult, RootMismatch};
-use reth_trie::{hashed_cursor::HashedPostStateCursorFactory, updates::TrieUpdates, StateRoot};
+use reth_trie::{
+    hashed_cursor::HashedPostStateCursorFactory, updates::TrieUpdates, HashedPostStateSorted,
+    StateRoot,
+};
 use std::{
     collections::{btree_map::Entry, BTreeMap, HashSet},
     sync::Arc,
@@ -1247,12 +1250,12 @@ where
         recorder: &mut MakeCanonicalDurationsRecorder,
     ) -> Result<(), CanonicalError> {
         let (blocks, state, chain_trie_updates) = chain.into_inner();
-        let hashed_state = state.hash_state_slow();
-        let prefix_sets = hashed_state.construct_prefix_sets().freeze();
-        let hashed_state_sorted = hashed_state.into_sorted();
-
+        let mut hashed_state_sorted = HashedPostStateSorted::default();
         let mut trie_updates = TrieUpdates::default();
         if !self.disable_merkle_root_calculation {
+            let hashed_state = state.hash_state_slow();
+            let prefix_sets = hashed_state.construct_prefix_sets().freeze();
+            hashed_state_sorted = hashed_state.into_sorted();
             // Compute state root or retrieve cached trie updates before opening write transaction.
             let block_hash_numbers =
                 blocks.iter().map(|(number, b)| (number, b.hash())).collect::<Vec<_>>();
