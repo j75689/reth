@@ -51,7 +51,7 @@ pub struct EnvironmentArgs {
     pub db: DatabaseArgs,
 
     #[arg(long)]
-    disable_hashing_stages: bool,
+    skip_state_root_validation: bool,
 }
 
 impl EnvironmentArgs {
@@ -148,7 +148,7 @@ impl EnvironmentArgs {
                     NoopBlockExecutorProvider::default(),
                     config.stages.clone(),
                     prune_modes.clone(),
-                    self.disable_hashing_stages,
+                    self.skip_state_root_validation,
                 ))
                 .build(factory.clone(), StaticFileProducer::new(factory.clone(), prune_modes));
 

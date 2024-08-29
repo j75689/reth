@@ -84,7 +84,7 @@ pub fn build_pipeline<DB, H, B, Executor>(
     static_file_producer: StaticFileProducer<DB>,
     executor: Executor,
     exex_manager_handle: ExExManagerHandle,
-    disable_hashing_stages: bool,
+    skip_state_root_validation: bool,
 ) -> eyre::Result<Pipeline<DB>>
 where
     DB: Database + Clone + 'static,
@@ -116,7 +116,7 @@ where
                 executor.clone(),
                 stage_config.clone(),
                 prune_modes.clone(),
-                disable_hashing_stages,
+                skip_state_root_validation,
             )
             .set(
                 ExecutionStage::new(

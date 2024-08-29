@@ -113,7 +113,7 @@ pub struct NodeCommand<Ext: clap::Args + fmt::Debug = NoArgs> {
     
     /// Disable hashing stage
     #[arg(long, default_value_t = false)]
-    pub disable_hashing_stages: bool,
+    pub skip_state_root_validation: bool,
 }
 
 impl NodeCommand {
@@ -161,7 +161,7 @@ impl<Ext: clap::Args + fmt::Debug> NodeCommand<Ext> {
             pruning,
             ext,
             enable_prefetch,
-            disable_hashing_stages,
+            skip_state_root_validation,
         } = self;
         // set up node config
         let mut node_config = NodeConfig {
@@ -179,7 +179,7 @@ impl<Ext: clap::Args + fmt::Debug> NodeCommand<Ext> {
             dev,
             pruning,
             enable_prefetch,
-            disable_hashing_stages,
+            skip_state_root_validation,
         };
 
         // Register the prometheus recorder before creating the database,

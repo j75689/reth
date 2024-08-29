@@ -150,7 +150,7 @@ pub struct NodeConfig {
     pub enable_prefetch: bool,
 
     /// Disable hashing stages to skip merkle tree building
-    pub disable_hashing_stages: bool,
+    pub skip_state_root_validation: bool,
 }
 
 impl NodeConfig {
@@ -443,7 +443,7 @@ impl Default for NodeConfig {
             pruning: PruningArgs::default(),
             datadir: DatadirArgs::default(),
             enable_prefetch: false,
-            disable_hashing_stages: false,
+            skip_state_root_validation: false,
         }
     }
 }

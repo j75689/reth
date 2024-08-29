@@ -37,7 +37,7 @@ pub struct ImportOpCommand {
     path: PathBuf,
 
     #[arg(long)]
-    disable_hashing_stages: bool,
+    skip_state_root_validation: bool,
 }
 
 impl ImportOpCommand {
@@ -95,7 +95,7 @@ impl ImportOpCommand {
                 Arc::new(file_client),
                 StaticFileProducer::new(provider_factory.clone(), PruneModes::default()),
                 true,
-                self.disable_hashing_stages,
+                self.skip_state_root_validation,
             )
             .await?;
 

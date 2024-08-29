@@ -54,7 +54,7 @@ pub struct ImportCommand {
     path: PathBuf,
 
     #[arg(long)]
-    disable_hashing_stages: bool,
+    skip_state_root_validation: bool,
 }
 
 impl ImportCommand {
@@ -107,7 +107,7 @@ impl ImportCommand {
                 StaticFileProducer::new(provider_factory.clone(), PruneModes::default()),
                 self.no_state,
                 executor.clone(),
-                self.disable_hashing_stages,
+                self.skip_state_root_validation,
             )?;
 
             // override the tip
@@ -173,7 +173,7 @@ pub fn build_import_pipeline<DB, C, E>(
     static_file_producer: StaticFileProducer<DB>,
     disable_exec: bool,
     executor: E,
-    disable_hashing_stages: bool,
+    skip_state_root_validation: bool,
 ) -> eyre::Result<(Pipeline<DB>, impl Stream<Item = NodeEvent>)>
 where
     DB: Database + Clone + Unpin + 'static,
@@ -225,7 +225,7 @@ where
                 executor,
                 config.stages.clone(),
                 PruneModes::default(),
-                disable_hashing_stages,
+                skip_state_root_validation,
             )
             .builder()
             .disable_all_if(&StageId::STATE_REQUIRED, || disable_exec),

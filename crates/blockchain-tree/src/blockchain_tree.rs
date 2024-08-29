@@ -77,8 +77,8 @@ pub struct BlockchainTree<DB, E> {
     metrics: TreeMetrics,
     /// Whether to enable prefetch when execute block
     enable_prefetch: bool,
-    /// Disable merkle root calculation for blocks.
-    disable_merkle_root_calculation: bool,
+    /// Disable state root calculation for blocks.
+    skip_state_root_validation: bool,
 }
 
 impl<DB, E> BlockchainTree<DB, E> {
@@ -151,7 +151,7 @@ where
             sync_metrics_tx: None,
             metrics: Default::default(),
             enable_prefetch: false,
-            disable_merkle_root_calculation: false,
+            skip_state_root_validation: false,
         })
     }
 
@@ -182,11 +182,11 @@ where
         self
     }
 
-    /// Set the merkle root calculation to be disabled.
+    /// Set the state root calculation to be disabled.
     ///
-    /// This is helpful when the merkle root is taking too long to calculate.
-    pub const fn disable_merkle_root_calculation(mut self) -> Self {
-        self.disable_merkle_root_calculation = true;
+    /// This is helpful when the state root is taking too long to calculate.
+    pub const fn skip_state_root_validation(mut self) -> Self {
+        self.skip_state_root_validation = true;
         self
     }
 
@@ -449,7 +449,7 @@ where
             BlockAttachment::HistoricalFork
         };
 
-        if self.disable_merkle_root_calculation {
+        if self.skip_state_root_validation {
             block_validation_kind = BlockValidationKind::SkipStateRootValidation;
         }
 
@@ -499,7 +499,7 @@ where
         let chain_tip = parent_chain.tip().hash();
         let canonical_chain = self.state.block_indices.canonical_chain();
 
-        if self.disable_merkle_root_calculation {
+        if self.skip_state_root_validation {
             block_validation_kind = BlockValidationKind::SkipStateRootValidation;
         }
 
@@ -1252,7 +1252,7 @@ where
         let (blocks, state, chain_trie_updates) = chain.into_inner();
         let mut hashed_state_sorted = HashedPostStateSorted::default();
         let mut trie_updates = TrieUpdates::default();
-        if !self.disable_merkle_root_calculation {
+        if !self.skip_state_root_validation {
             let hashed_state = state.hash_state_slow();
             let prefix_sets = hashed_state.construct_prefix_sets().freeze();
             hashed_state_sorted = hashed_state.into_sorted();

@@ -398,7 +398,7 @@ where
                     NoopBlockExecutorProvider::default(),
                     self.toml_config().stages.clone(),
                     self.prune_modes(),
-                    self.node_config().disable_hashing_stages,
+                    self.node_config().skip_state_root_validation,
                 ))
                 .build(
                     factory.clone(),
@@ -655,8 +655,8 @@ where
             tree = tree.enable_prefetch();
         }
 
-        if self.node_config().disable_hashing_stages {
-            tree = tree.disable_merkle_root_calculation();
+        if self.node_config().skip_state_root_validation {
+            tree = tree.skip_state_root_validation();
         }
 
         let blockchain_tree = Arc::new(ShareableBlockchainTree::new(tree));

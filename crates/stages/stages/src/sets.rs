@@ -86,7 +86,7 @@ pub struct DefaultStages<Provider, H, B, EF> {
     /// Prune configuration for every segment that can be pruned
     prune_modes: PruneModes,
     /// Disable hashing stages(`Merkle`, `AccountHashing`, `StorageHashing`)
-    disable_hashing_stages: bool,
+    skip_state_root_validation: bool,
 }
 
 impl<Provider, H, B, E> DefaultStages<Provider, H, B, E> {
@@ -101,7 +101,7 @@ impl<Provider, H, B, E> DefaultStages<Provider, H, B, E> {
         executor_factory: E,
         stages_config: StageConfig,
         prune_modes: PruneModes,
-        disable_hashing_stages: bool,
+        skip_state_root_validation: bool,
     ) -> Self
     where
         E: BlockExecutorProvider,
@@ -118,7 +118,7 @@ impl<Provider, H, B, E> DefaultStages<Provider, H, B, E> {
             executor_factory,
             stages_config,
             prune_modes,
-            disable_hashing_stages,
+            skip_state_root_validation,
         }
     }
 }
@@ -133,7 +133,7 @@ where
         executor_factory: E,
         stages_config: StageConfig,
         prune_modes: PruneModes,
-        disable_hashing_stages: bool,
+        skip_state_root_validation: bool,
     ) -> StageSetBuilder<DB> {
         StageSetBuilder::default()
             .add_set(default_offline)
@@ -141,7 +141,7 @@ where
                 executor_factory,
                 stages_config,
                 prune_modes,
-                disable_hashing_stages,
+                skip_state_root_validation,
             ))
             .add_stage(FinishStage)
     }
@@ -161,7 +161,7 @@ where
             self.executor_factory,
             self.stages_config.clone(),
             self.prune_modes,
-            self.disable_hashing_stages,
+            self.skip_state_root_validation,
         )
     }
 }

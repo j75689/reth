@@ -143,7 +143,7 @@ where
             static_file_producer,
             ctx.components().block_executor().clone(),
             pipeline_exex_handle,
-            ctx.node_config().disable_hashing_stages,
+            ctx.node_config().skip_state_root_validation,
         )?;
 
         let pipeline_events = pipeline.events();

@@ -53,7 +53,7 @@ pub struct Command {
     pub interval: u64,
 
     #[arg(long)]
-    disable_hashing_stages: bool,
+    skip_state_root_validation: bool,
 }
 
 impl Command {
@@ -100,7 +100,7 @@ impl Command {
                     executor.clone(),
                     stage_conf.clone(),
                     prune_modes.clone(),
-                    self.disable_hashing_stages,
+                    self.skip_state_root_validation,
                 )
                 .set(ExecutionStage::new(
                     executor,
