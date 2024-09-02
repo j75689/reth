@@ -36,7 +36,7 @@ pub fn build_networked_pipeline<DB, Client, Executor>(
     static_file_producer: StaticFileProducer<DB>,
     executor: Executor,
     exex_manager_handle: ExExManagerHandle,
-    disable_hash_stages: bool,
+    skip_state_root_validation: bool,
 ) -> eyre::Result<Pipeline<DB>>
 where
     DB: Database + Unpin + Clone + 'static,
@@ -64,7 +64,7 @@ where
         static_file_producer,
         executor,
         exex_manager_handle,
-        disable_hash_stages,
+        skip_state_root_validation,
     )?;
 
     Ok(pipeline)
