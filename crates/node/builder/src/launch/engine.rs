@@ -6,6 +6,8 @@ use reth_beacon_consensus::{
     BeaconConsensusEngineHandle,
 };
 use reth_blockchain_tree::BlockchainTreeConfig;
+#[cfg(feature = "bsc")]
+use reth_bsc_engine::ParliaEngineBuilder;
 use reth_chainspec::ChainSpec;
 use reth_engine_service::service::{ChainEvent, EngineService};
 use reth_engine_tree::{
@@ -15,6 +17,8 @@ use reth_engine_tree::{
 use reth_engine_util::EngineMessageStreamExt;
 use reth_exex::ExExManagerHandle;
 use reth_network::{NetworkSyncUpdater, SyncState};
+#[cfg(feature = "bsc")]
+use reth_network_api::EngineRxProvider;
 use reth_network_api::{BlockDownloaderProvider, NetworkEventListenerProvider};
 use reth_node_api::{BuiltPayload, FullNodeTypes, NodeAddOns};
 use reth_node_core::{
@@ -25,6 +29,8 @@ use reth_node_core::{
     version::{CARGO_PKG_VERSION, CLIENT_CODE, NAME_CLIENT, VERGEN_GIT_SHA},
 };
 use reth_node_events::{cl::ConsensusLayerHealthEvents, node};
+#[cfg(feature = "bsc")]
+use reth_primitives::parlia::ParliaConfig;
 use reth_provider::providers::BlockchainProvider2;
 use reth_rpc_engine_api::{capabilities::EngineCapabilities, EngineApi};
 use reth_rpc_types::{engine::ClientVersionV1, WithOtherFields};
@@ -203,20 +209,55 @@ where
         info!(target: "reth::cli", prune_config=?ctx.prune_config().unwrap_or_default(), "Pruner initialized");
 
         // Configure the consensus engine
-        let mut eth_service = EngineService::new(
-            ctx.consensus(),
-            ctx.components().block_executor().clone(),
-            ctx.chain_spec(),
-            network_client.clone(),
-            Box::pin(consensus_engine_stream),
-            pipeline,
-            Box::new(ctx.task_executor().clone()),
-            ctx.provider_factory().clone(),
-            ctx.blockchain_db().clone(),
-            pruner,
-            ctx.components().payload_builder().clone(),
-            TreeConfig::default(),
-        );
+        let mut eth_service = {
+            #[cfg(not(feature = "bsc"))]
+            {
+                let eth_service = EngineService::new(
+                    ctx.consensus(),
+                    ctx.components().block_executor().clone(),
+                    ctx.chain_spec(),
+                    network_client.clone(),
+                    Box::pin(consensus_engine_stream),
+                    pipeline,
+                    Box::new(ctx.task_executor().clone()),
+                    ctx.provider_factory().clone(),
+                    ctx.blockchain_db().clone(),
+                    pruner,
+                    ctx.components().payload_builder().clone(),
+                    TreeConfig::default(),
+                );
+                eth_service
+            }
+            #[cfg(feature = "bsc")]
+            {
+                let engine_rx = ctx.node_adapter().components.network().get_to_engine_rx();
+                let client = ParliaEngineBuilder::new(
+                    ctx.chain_spec(),
+                    ParliaConfig::default(),
+                    ctx.blockchain_db().clone(),
+                    ctx.blockchain_db().clone(),
+                    consensus_engine_tx.clone(),
+                    engine_rx,
+                    network_client.clone(),
+                )
+                .build(ctx.node_config().debug.tip.is_none());
+                let eth_service = EngineService::new(
+                    ctx.consensus(),
+                    ctx.components().block_executor().clone(),
+                    ctx.chain_spec(),
+                    client.clone(),
+                    Box::pin(consensus_engine_stream),
+                    pipeline,
+                    Box::new(ctx.task_executor().clone()),
+                    ctx.provider_factory().clone(),
+                    ctx.blockchain_db().clone(),
+                    pruner,
+                    ctx.components().payload_builder().clone(),
+                    TreeConfig::default(),
+                );
+                eth_service
+            }
+        };
 
         let event_sender = EventSender::default();
 
