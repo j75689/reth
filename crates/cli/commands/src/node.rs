@@ -110,7 +110,7 @@ pub struct NodeCommand<Ext: clap::Args + fmt::Debug = NoArgs> {
     /// Enable prefetch when executing block
     #[arg(long, default_value_t = false)]
     pub enable_prefetch: bool,
-    
+
     /// All performance optimization related arguments
     #[command(flatten)]
     pub performance_optimization: PerformanceOptimizationArgs,

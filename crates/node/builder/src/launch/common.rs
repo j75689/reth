@@ -641,7 +641,7 @@ where
             consensus.clone(),
             components.block_executor().clone(),
         );
-        
+
         let mut tree =
             BlockchainTree::new(tree_externals, *self.tree_config(), self.prune_modes())?
                 .with_sync_metrics_tx(self.sync_metrics_tx())
