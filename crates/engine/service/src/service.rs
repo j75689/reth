@@ -83,7 +83,7 @@ where
     ) -> Self {
         let downloader = BasicBlockDownloader::new(client, consensus.clone());
 
-        let persistence_handle = PersistenceHandle::spawn_service(provider, pruner);
+        let persistence_handle = PersistenceHandle::spawn_service(provider.clone(), pruner);
         let payload_validator = ExecutionPayloadValidator::new(chain_spec);
 
         let canonical_in_memory_state = blockchain_db.canonical_in_memory_state();
@@ -97,6 +97,7 @@ where
             payload_builder,
             canonical_in_memory_state,
             tree_config,
+            provider,
         );
 
         let engine_handler = EngineApiRequestHandler::new(to_tree_tx, from_tree);
