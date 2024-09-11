@@ -1800,7 +1800,6 @@ where
         let (state_root, trie_output) =
             ParallelStateRoot::new(consistent_view, hashed_state.clone())
                 .incremental_root_with_updates()
-                .map(|(root, updates)| (root, Some(updates)))
                 .map_err(ProviderError::from)?;
 
         if state_root != block.state_root {
@@ -1824,7 +1823,7 @@ where
             senders: Arc::new(block.senders),
             execution_output: Arc::new(ExecutionOutcome::from((output, block_number))),
             hashed_state: Arc::new(hashed_state),
-            trie: Arc::new(trie_output.unwrap_or_default()),
+            trie: Arc::new(trie_output),
         };
 
         if self.state.tree_state.canonical_block_hash() == executed.block().parent_hash {
