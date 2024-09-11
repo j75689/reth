@@ -29,7 +29,7 @@ use reth_primitives::{
 };
 use reth_provider::{
     providers::ConsistentDbView, BlockReader, ExecutionOutcome, ProviderError, ProviderFactory,
-    StateProviderBox, StateProviderFactory, StateRootProvider,
+    StateProviderBox, StateProviderFactory,
 };
 use reth_revm::database::StateProviderDatabase;
 use reth_rpc_types::{
@@ -1766,12 +1766,18 @@ where
         let sealed_block = Arc::new(block.block.clone());
         let block = block.unseal();
 
-        let ancestor_blocks = self
-            .state
-            .tree_state
-            .blocks_by_hash
+        // get all in-memory parent blocks
+        let mut parent_blocks = vec![];
+        if let Some((_, executed_blocks)) =
+            self.state.tree_state.blocks_by_hash(block.block.header.parent_hash)
+        {
+            parent_blocks = executed_blocks;
+            parent_blocks.reverse();
+        }
+
+        let ancestor_blocks = parent_blocks
             .iter()
-            .map(|(hash, block)| (*hash, block.block().header.header().clone()))
+            .map(|block| (block.block().header.hash(), block.block().header.header().clone()))
             .collect::<HashMap<_, _>>();
 
         let exec_time = Instant::now();
@@ -1783,15 +1789,12 @@ where
         )?;
 
         let consistent_view = ConsistentDbView::new_with_latest_tip(self.provider_factory.clone())?;
-        let mut hashed_state = HashedPostState::from_bundle_state(&output.state.state);
-
-        if let Some((_, executed_blocks)) =
-            self.state.tree_state.blocks_by_hash(block.block.header.parent_hash)
-        {
-            for block in &executed_blocks {
-                hashed_state.extend(block.hashed_state.as_ref().clone())
-            }
+        let mut hashed_state = HashedPostState::default();
+        // attach in-memory parent state for root calculation
+        for block in parent_blocks {
+            hashed_state.extend(block.hashed_state.as_ref().clone())
         }
+        hashed_state.extend(HashedPostState::from_bundle_state(&output.state.state));
 
         let root_time = Instant::now();
         let (state_root, trie_output) =
