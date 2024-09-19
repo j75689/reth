@@ -242,6 +242,7 @@ where
                     engine_tree_config,
                     ctx.invalid_block_hook()?,
                     ctx.sync_metrics_tx(),
+                    ctx.node_config().skip_state_root_validation,
                 );
                 eth_service
             }
@@ -273,6 +274,7 @@ where
                     engine_tree_config,
                     ctx.invalid_block_hook()?,
                     ctx.sync_metrics_tx(),
+                    ctx.node_config().skip_state_root_validation,
                 );
                 eth_service
             }

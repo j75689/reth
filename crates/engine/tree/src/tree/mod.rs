@@ -495,6 +495,8 @@ pub struct EngineApiTreeHandler<P, E, T: EngineTypes> {
     metrics: EngineApiMetrics,
     /// An invalid block hook.
     invalid_block_hook: Box<dyn InvalidBlockHook>,
+    /// Flag indicating whether the state root validation should be skipped.
+    skip_state_root_validation: bool,
 }
 
 impl<P: Debug, E: Debug, T: EngineTypes + Debug> std::fmt::Debug for EngineApiTreeHandler<P, E, T> {
@@ -539,6 +541,7 @@ where
         persistence_state: PersistenceState,
         payload_builder: PayloadBuilderHandle<T>,
         config: TreeConfig,
+        skip_state_root_validation: bool,
     ) -> Self {
         let (incoming_tx, incoming) = std::sync::mpsc::channel();
         Self {
@@ -558,6 +561,7 @@ where
             metrics: Default::default(),
             incoming_tx,
             invalid_block_hook: Box::new(NoopInvalidBlockHook),
+            skip_state_root_validation,
         }
     }
 
@@ -582,6 +586,7 @@ where
         canonical_in_memory_state: CanonicalInMemoryState,
         config: TreeConfig,
         invalid_block_hook: Box<dyn InvalidBlockHook>,
+        skip_state_root_validation: bool,
     ) -> (Sender<FromEngine<EngineApiRequest<T>>>, UnboundedReceiver<EngineApiEvent>) {
         let best_block_number = provider.best_block_number().unwrap_or(0);
         let header = provider.sealed_header(best_block_number).ok().flatten().unwrap_or_default();
@@ -612,6 +617,7 @@ where
             persistence_state,
             payload_builder,
             config,
+            skip_state_root_validation,
         );
         task.set_invalid_block_hook(invalid_block_hook);
         let incoming = task.incoming_tx.clone();
@@ -2179,53 +2185,57 @@ where
         }
 
         let hashed_state = HashedPostState::from_bundle_state(&output.state.state);
+        let mut trie_output: TrieUpdates = TrieUpdates::default();
 
-        let root_time = Instant::now();
-        let mut state_root_result = None;
+        if !self.skip_state_root_validation {
+            let root_time = Instant::now();
+            let mut state_root_result = None;
 
-        // We attempt to compute state root in parallel if we are currently not persisting anything
-        // to database. This is safe, because the database state cannot change until we
-        // finish parallel computation. It is important that nothing is being persisted as
-        // we are computing in parallel, because we initialize a different database transaction
-        // per thread and it might end up with a different view of the database.
-        let persistence_in_progress = self.persistence_state.in_progress();
-        if !persistence_in_progress {
-            state_root_result = match self
-                .compute_state_root_in_parallel(block.parent_hash, &hashed_state)
-            {
-                Ok((state_root, trie_output)) => Some((state_root, trie_output)),
-                Err(ProviderError::ConsistentView(error)) => {
-                    debug!(target: "engine", %error, "Parallel state root computation failed consistency check, falling back");
-                    None
-                }
-                Err(error) => return Err(error.into()),
+            // We attempt to compute state root in parallel if we are currently not persisting
+            // anything to database. This is safe, because the database state cannot
+            // change until we finish parallel computation. It is important that nothing
+            // is being persisted as we are computing in parallel, because we initialize
+            // a different database transaction per thread and it might end up with a
+            // different view of the database.
+            let persistence_in_progress = self.persistence_state.in_progress();
+            if !persistence_in_progress {
+                state_root_result = match self
+                    .compute_state_root_in_parallel(block.parent_hash, &hashed_state)
+                {
+                    Ok((state_root, trie_output)) => Some((state_root, trie_output)),
+                    Err(ProviderError::ConsistentView(error)) => {
+                        debug!(target: "engine", %error, "Parallel state root computation failed consistency check, falling back");
+                        None
+                    }
+                    Err(error) => return Err(error.into()),
+                };
+            }
+
+            let (state_root, _trie_output) = if let Some(result) = state_root_result {
+                result
+            } else {
+                debug!(target: "engine", persistence_in_progress, "Failed to compute state root in parallel");
+                state_provider.state_root_with_updates(hashed_state.clone())?
             };
+
+            if state_root != block.state_root {
+                // call post-block hook
+                self.invalid_block_hook.on_invalid_block(
+                    &parent_block,
+                    &block.clone().seal_slow(),
+                    &output,
+                    Some((&trie_output, state_root)),
+                );
+                return Err(ConsensusError::BodyStateRootDiff(
+                    GotExpected { got: state_root, expected: block.state_root }.into(),
+                )
+                .into())
+            }
+            trie_output = _trie_output;
+            let root_elapsed = root_time.elapsed();
+            self.metrics.block_validation.record_state_root(root_elapsed.as_secs_f64());
+            debug!(target: "engine::tree", ?root_elapsed, ?block_number, "Calculated state root");
         }
-
-        let (state_root, trie_output) = if let Some(result) = state_root_result {
-            result
-        } else {
-            debug!(target: "engine", persistence_in_progress, "Failed to compute state root in parallel");
-            state_provider.state_root_with_updates(hashed_state.clone())?
-        };
-
-        if state_root != block.state_root {
-            // call post-block hook
-            self.invalid_block_hook.on_invalid_block(
-                &parent_block,
-                &block.clone().seal_slow(),
-                &output,
-                Some((&trie_output, state_root)),
-            );
-            return Err(ConsensusError::BodyStateRootDiff(
-                GotExpected { got: state_root, expected: block.state_root }.into(),
-            )
-            .into())
-        }
-
-        let root_elapsed = root_time.elapsed();
-        self.metrics.block_validation.record_state_root(root_elapsed.as_secs_f64());
-        debug!(target: "engine::tree", ?root_elapsed, ?block_number, "Calculated state root");
 
         let executed = ExecutedBlock {
             block: sealed_block.clone(),
@@ -2715,6 +2725,7 @@ mod tests {
                 PersistenceState::default(),
                 payload_builder,
                 TreeConfig::default(),
+                false,
             );
 
             let block_builder = TestBlockBuilder::default().with_chain_spec((*chain_spec).clone());

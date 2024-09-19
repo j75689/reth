@@ -78,6 +78,7 @@ where
         tree_config: TreeConfig,
         invalid_block_hook: Box<dyn InvalidBlockHook>,
         sync_metrics_tx: MetricEventsSender,
+        skip_state_root_validation: bool,
     ) -> Self {
         let downloader = BasicBlockDownloader::new(client, consensus.clone());
 
@@ -97,6 +98,7 @@ where
             canonical_in_memory_state,
             tree_config,
             invalid_block_hook,
+            skip_state_root_validation,
         );
 
         let engine_handler = EngineApiRequestHandler::new(to_tree_tx, from_tree);
@@ -209,6 +211,7 @@ mod tests {
             TreeConfig::default(),
             Box::new(NoopInvalidBlockHook::default()),
             sync_metrics_tx,
+            false,
         );
     }
 }
