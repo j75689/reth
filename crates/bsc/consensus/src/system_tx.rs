@@ -85,7 +85,7 @@ impl Parlia {
         })
     }
 
-    pub fn distribute_to_system(&self, system_reward: u64) -> Transaction {
+    pub fn distribute_to_system(&self, system_reward: u128) -> Transaction {
         Transaction::Legacy(TxLegacy {
             chain_id: Some(self.chain_spec.chain.id()),
             nonce: 0,
@@ -97,7 +97,7 @@ impl Parlia {
         })
     }
 
-    pub fn distribute_to_validator(&self, address: Address, block_reward: u64) -> Transaction {
+    pub fn distribute_to_validator(&self, address: Address, block_reward: u128) -> Transaction {
         let function = self.validator_abi.function("deposit").unwrap().first().unwrap();
         let input = function.abi_encode_input(&[DynSolValue::from(address)]).unwrap();
 

@@ -344,7 +344,7 @@ where
             let reward_to_system = block_reward >> SYSTEM_REWARD_PERCENT;
             if reward_to_system > 0 {
                 self.transact_system_tx(
-                    self.parlia().distribute_to_system(reward_to_system.try_into().unwrap()),
+                    self.parlia().distribute_to_system(reward_to_system),
                     validator,
                     system_txs,
                     receipts,
@@ -357,7 +357,7 @@ where
         }
 
         self.transact_system_tx(
-            self.parlia().distribute_to_validator(validator, block_reward.try_into().unwrap()),
+            self.parlia().distribute_to_validator(validator, block_reward),
             validator,
             system_txs,
             receipts,
