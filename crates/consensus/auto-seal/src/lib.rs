@@ -611,7 +611,7 @@ mod tests {
         let timestamp = 1_600_000_000;
 
         // Set up the parent header with base fee
-        let base_fee = Some(100);
+        let base_fee = Some(0);
         let parent_header = Header { base_fee_per_gas: base_fee, ..Default::default() };
         storage.headers.insert(storage.best_block, parent_header);
 

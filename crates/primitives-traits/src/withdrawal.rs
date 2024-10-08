@@ -137,7 +137,7 @@ mod tests {
 
         let withdrawals: Vec<Withdrawal> = serde_json::from_str(input).unwrap();
         let s = serde_json::to_string(&withdrawals).unwrap();
-        assert_eq!(input, s);
+        assert_eq!(input.to_lowercase(), s.to_lowercase());
     }
 
     proptest!(

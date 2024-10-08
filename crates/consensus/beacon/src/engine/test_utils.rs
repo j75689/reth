@@ -406,6 +406,7 @@ where
             None,
             watch::channel(FinishedExExHeight::NoExExs).1,
             0,
+            None,
         );
 
         let mut hooks = EngineHooks::new();
