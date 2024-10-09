@@ -1,6 +1,25 @@
 # Changelog
 
-## V1.0.4
+## v1.0.5
+This release merges with upstream version v1.0.7, adding support for the BSC mainnet, testnet, and opBNB mainnet, testnet. It includes new features and several bug fixes.
+
+### NOTE
+**This version is compatible with the BSC mainnet, testnet, and opBNB mainnet, testnet.**
+
+### New Features
+1. Introduced `--engine.experimental` flag to enable the experimental engine for performance improvements.
+2. Introduced `--optimize.skip-state-root-validation` flag to skip state root validation during block imports, useful for importing blocks without merkle validation.  
+   **Warning:** Use this flag with caution as it may lead to data inconsistency.
+
+### Features
+- [#123](https://github.com/bnb-chain/reth/pull/123): Added support for importing blocks without merkle calculation.
+- [#147](https://github.com/bnb-chain/reth/pull/147): Ensured state root validation is not skipped when inserting downloaded blocks.
+- [#157](https://github.com/bnb-chain/reth/pull/157): Merged upstream version v1.0.7.
+
+### Bug Fixes
+- [#137](https://github.com/bnb-chain/reth/pull/137): Fixed `unwind_to` to ensure it is exclusive.
+- [#145](https://github.com/bnb-chain/reth/pull/145): Ensured sidecars are correctly written to static files when saving blocks.
+## v1.0.4
 
 This release is for opBNB testnet and mainnet Fjord upgrade.
 
@@ -9,7 +28,7 @@ This release is for opBNB testnet and mainnet Fjord upgrade.
 * [\#56](https://github.com/bnb-chain/reth/pull/56) feat: add trie prefetch when executing blocks
 * [\#130](https://github.com/bnb-chain/reth/pull/130) feat: add Fjord upgrade time for opBNB
 
-## V1.0.3
+## v1.0.3
 This is a bugfix version.
 
 ### BUGFIX
@@ -17,7 +36,7 @@ This is a bugfix version.
 * [\#122](https://github.com/bnb-chain/reth/pull/122) fix: bsc snapshot issues
 * [\#125](https://github.com/bnb-chain/reth/pull/125) fix: bsc `BLS_SIGNATURE_VALIDATION` precompile contract error
 
-## V1.0.2
+## v1.0.2
 This release is for BSC mainnet HaberFix and Bohr upgrade and opBNB mainnet Wright upgrade.
 
 ### FEATURES
@@ -30,7 +49,7 @@ This release is for BSC mainnet HaberFix and Bohr upgrade and opBNB mainnet Wrig
 * [\#115](https://github.com/bnb-chain/reth/pull/115) fix: print CanonicalBlockAdded logs after committed db
 
 
-## V1.0.1
+## v1.0.1
 This release is for BSC testnet Bohr upgrade and opBNB testnet Wright upgrade.
 
 ### FEATURES
