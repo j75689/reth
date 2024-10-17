@@ -2255,6 +2255,7 @@ where
                 let _ = interrupt_tx.send(());
             };
 
+            trie_output = _trie_output;
             if state_root != block.state_root {
                 // call post-block hook
                 self.invalid_block_hook.on_invalid_block(
@@ -2268,7 +2269,7 @@ where
                 )
                 .into())
             }
-            trie_output = _trie_output;
+            
             let root_elapsed = root_time.elapsed();
             self.metrics.block_validation.record_state_root(root_elapsed.as_secs_f64());
             debug!(target: "engine::tree", ?root_elapsed, ?block_number, "Calculated state root");
@@ -2288,8 +2289,11 @@ where
             self.canonical_in_memory_state.set_pending_block(executed.clone());
         }
 
+        let insert_state_time = Instant::now();
         self.state.tree_state.insert_executed(executed);
         self.metrics.engine.executed_blocks.set(self.state.tree_state.block_count() as f64);
+        debug!(target: "engine::tree", elapsed=?insert_state_time.elapsed(), ?block_number, "Inserted executed state");
+
 
         // we are checking that this is a fork block compared to the current `SYNCING` forkchoice
         // state.
@@ -2337,6 +2341,7 @@ where
         // Extend with block we are validating root for.
         input.append_ref(hashed_state);
 
+        // TODO: performance-> pre-prepare the view.provider_ro() in the future.
         Ok(ParallelStateRoot::new(consistent_view, input).incremental_root_with_updates()?)
     }
 

@@ -77,16 +77,30 @@ where
         retain_updates: bool,
     ) -> Result<(B256, TrieUpdates), ParallelStateRootError> {
         let mut tracker = ParallelTrieTracker::default();
+        let mut time = std::time::Instant::now();
         let trie_nodes_sorted = self.input.nodes.into_sorted();
+        debug!(target: "trie::parallel_state_root", elapsed = time.elapsed().as_micros(), "trie nodes sorted");
+
+        time = std::time::Instant::now();
         let hashed_state_sorted = self.input.state.into_sorted();
+        debug!(target: "trie::parallel_state_root", elapsed = time.elapsed().as_micros(), "hashed state sorted");
+
+        time = std::time::Instant::now();
         let prefix_sets = self.input.prefix_sets.freeze();
+        debug!(target: "trie::parallel_state_root", elapsed = time.elapsed().as_micros(), "prefix sets");
+
+        time = std::time::Instant::now();
         let storage_root_targets = StorageRootTargets::new(
             prefix_sets.account_prefix_set.iter().map(|nibbles| B256::from_slice(&nibbles.pack())),
             prefix_sets.storage_prefix_sets,
         );
+        debug!(target: "trie::parallel_state_root", elapsed = time.elapsed().as_micros(), "storage root targets");
 
+        // TODO: performance-> pre-prepare the view.provider_ro() in the future.
         // Pre-calculate storage roots in parallel for accounts which were changed.
         tracker.set_precomputed_storage_roots(storage_root_targets.len() as u64);
+
+        time = std::time::Instant::now();
         debug!(target: "trie::parallel_state_root", len = storage_root_targets.len(), "pre-calculating storage roots");
         let mut storage_roots = storage_root_targets
             .into_par_iter()
@@ -100,6 +114,8 @@ where
                     DatabaseHashedCursorFactory::new(provider_ro.tx_ref()),
                     &hashed_state_sorted,
                 );
+
+                let time = std::time::Instant::now();
                 let storage_root_result = StorageRoot::new_hashed(
                     trie_cursor_factory,
                     hashed_cursor_factory,
@@ -109,10 +125,12 @@ where
                 )
                 .with_prefix_set(prefix_set)
                 .calculate(retain_updates);
+                debug!(target: "trie::parallel_state_root", elapsed = time.elapsed().as_micros(), address = hashed_address.to_string(), "storage root calculated");
                 Ok((hashed_address, storage_root_result?))
             })
             .collect::<Result<HashMap<_, _>, ParallelStateRootError>>()?;
 
+        debug!(target: "trie::parallel_state_root", elapsed = time.elapsed().as_micros(), "pre-storage roots calculated");
         trace!(target: "trie::parallel_state_root", "calculating state root");
         let mut trie_updates = TrieUpdates::default();
 
@@ -139,6 +157,8 @@ where
         let account_tree_start = std::time::Instant::now();
         let mut hash_builder = HashBuilder::default().with_updates(retain_updates);
         let mut account_rlp = Vec::with_capacity(128);
+        let mut total_missing_leaves_cost_time: u128 = 0;
+        // TODO: performance -> parallelize this loop?
         while let Some(node) = account_node_iter.try_next().map_err(ProviderError::Database)? {
             match node {
                 TrieElement::Branch(node) => {
@@ -152,15 +172,19 @@ where
                         // Since we do not store all intermediate nodes in the database, there might
                         // be a possibility of re-adding a non-modified leaf to the hash builder.
                         None => {
+                            let time = std::time::Instant::now();
                             tracker.inc_missed_leaves();
-                            StorageRoot::new_hashed(
+                            let (r, s, u) = StorageRoot::new_hashed(
                                 trie_cursor_factory.clone(),
                                 hashed_cursor_factory.clone(),
                                 hashed_address,
                                 #[cfg(feature = "metrics")]
                                 self.metrics.storage_trie.clone(),
                             )
-                            .calculate(retain_updates)?
+                            .calculate(retain_updates)?;
+                            debug!(target: "trie::parallel_state_root", elapsed = time.elapsed().as_micros(), address = hashed_address.to_string(), "add missed storage root");
+                            total_missing_leaves_cost_time += time.elapsed().as_micros();
+                            (r, s, u)
                         }
                     };
 
@@ -175,6 +199,8 @@ where
                 }
             }
         }
+
+        debug!(target: "trie::parallel_state_root", elapsed = total_missing_leaves_cost_time, "total missing leaves cost time");
 
         let root = hash_builder.root();
 
