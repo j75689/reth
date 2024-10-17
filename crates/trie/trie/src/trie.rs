@@ -13,7 +13,7 @@ use alloy_primitives::{keccak256, Address, B256};
 use alloy_rlp::{BufMut, Encodable};
 use reth_execution_errors::{StateRootError, StorageRootError};
 use reth_primitives::constants::EMPTY_ROOT_HASH;
-use tracing::trace;
+use tracing::{trace, debug};
 
 #[cfg(feature = "metrics")]
 use crate::metrics::{StateRootMetrics, TrieRootMetrics};
@@ -441,7 +441,7 @@ where
         #[cfg(feature = "metrics")]
         self.metrics.record(stats);
 
-        trace!(
+        debug!(
             target: "trie::storage_root",
             %root,
             hashed_address = %self.hashed_address,
