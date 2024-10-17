@@ -215,11 +215,12 @@ where
 
         #[cfg(feature = "metrics")]
         self.metrics.record_state_trie(stats);
-
+        let missing_leaves_time_rate = total_missing_leaves_cost_time as f64 / stats.duration().as_micros() as f64 * 100.0;
         debug!(
             target: "trie::parallel_state_root",
             %root,
             duration = ?stats.duration(),
+            missing_leaves_time_rate = missing_leaves_time_rate,
             account_tree_duration = ?account_tree_duration,
             storage_trees_duration = ?(stats.duration() - account_tree_duration),
             branches_added = stats.branches_added(),
