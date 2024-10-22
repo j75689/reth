@@ -41,7 +41,7 @@ use reth_rpc_types::{
 };
 use reth_stages_api::ControlFlow;
 use reth_trie::{updates::TrieUpdates, HashedPostState, TrieInput};
-use reth_trie_parallel::parallel_root::ParallelStateRoot;
+use reth_trie_parallel::{parallel_root::ParallelStateRoot, StorageRootTargets};
 use std::{
     cmp::Ordering,
     collections::{btree_map, hash_map, BTreeMap, HashMap, HashSet, VecDeque},
@@ -2300,6 +2300,22 @@ where
         // Extend with block we are validating root for.
         input.append_ref(hashed_state);
 
+        // TODO: prepare db<ro> pool.
+        ///
+        let prefix_sets = input.prefix_sets.freeze();
+        let storage_root_targets = StorageRootTargets::new(
+            prefix_sets.account_prefix_set.iter().map(|nibbles| B256::from_slice(&nibbles.pack())),
+            prefix_sets.storage_prefix_sets,
+        );
+
+        let provider_ro_pool = Vec::new();
+        for i in 0..storage_root_targets.len() {
+            let storage_root_target = storage_root_targets.get(i);
+            provider_ro_pool.push(consistent_view.provider_ro());
+        }
+        ///
+        
+        
         Ok(ParallelStateRoot::new(consistent_view, input).incremental_root_with_updates()?)
     }
 
