@@ -9,7 +9,9 @@ pub struct PerformanceOptimizationArgs {
     /// Skips state root validation during block import.
     /// This flag is intended for performance optimization when importing blocks from trusted
     /// sources.
-    /// **Warning: This option compromises the validation of chain data. Use with caution.**
+    /// **Warning: Enabling this option reduces the integrity of chain data validation.**
+    /// **Once enabled, it cannot be disabled, and the node will permanently skip state root validation.**
+    /// **Use only if you fully understand the consequences.**
     #[arg(long = "optimize.skip-state-root-validation", default_value_t = false)]
     pub skip_state_root_validation: bool,
 
