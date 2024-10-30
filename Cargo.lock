@@ -10300,6 +10300,7 @@ dependencies = [
  "alloy-rlp",
  "criterion",
  "dashmap 6.1.0",
+ "derivative",
  "derive_more 1.0.0",
  "itertools 0.13.0",
  "metrics",

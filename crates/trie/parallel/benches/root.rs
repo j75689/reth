@@ -65,6 +65,7 @@ pub fn calculate_state_root(c: &mut Criterion) {
                     ParallelStateRoot::new(
                         view.clone(),
                         TrieInput::from_state(updated_state.clone()),
+                        None,
                     )
                 },
                 |calculator| async { calculator.incremental_root() },

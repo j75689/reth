@@ -250,6 +250,7 @@ impl AppendableChain {
                 ParallelStateRoot::new(
                     consistent_view,
                     TrieInput::from_state(execution_outcome.hash_state_slow()),
+                    None,
                 )
                 .incremental_root_with_updates_and_cache(missing_leaves_cache)
                 .map(|(root, updates)| (root, Some(updates)))

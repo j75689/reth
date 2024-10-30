@@ -39,6 +39,8 @@ itertools.workspace = true
 reth-metrics = { workspace = true, optional = true }
 metrics = { workspace = true, optional = true }
 
+derivative = "2.0"
+
 [dev-dependencies]
 # reth
 reth-primitives = { workspace = true, features = ["test-utils", "arbitrary"] }

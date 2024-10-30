@@ -4,6 +4,7 @@ use crate::{stats::ParallelTrieTracker, storage_root_targets::StorageRootTargets
 use alloy_primitives::B256;
 use alloy_rlp::{BufMut, Encodable};
 use dashmap::DashMap;
+use derivative::Derivative;
 use itertools::Itertools;
 use reth_execution_errors::StorageRootError;
 use reth_provider::{
@@ -33,23 +34,35 @@ use tracing::*;
 /// it needs to rely on database state saying the same until
 /// the last transaction is open.
 /// See docs of using [`ConsistentDbView`] for caveats.
-#[derive(Debug)]
-pub struct ParallelStateRoot<Factory> {
+#[derive(Derivative)]
+#[derivative(Debug)]
+pub struct ParallelStateRoot<Factory: DatabaseProviderFactory> {
     /// Consistent view of the database.
     view: ConsistentDbView<Factory>,
     /// Trie input.
     input: TrieInput,
+    /// View read-only transaction of database.
+    #[derivative(Debug = "ignore")]
+    provider_ro: Option<Result<<Factory as DatabaseProviderFactory>::Provider, ProviderError>>,
     /// Parallel state root metrics.
     #[cfg(feature = "metrics")]
     metrics: ParallelStateRootMetrics,
 }
 
-impl<Factory> ParallelStateRoot<Factory> {
+impl<Factory> ParallelStateRoot<Factory>
+where
+    Factory: DatabaseProviderFactory<Provider: BlockReader> + Clone + Send + Sync + 'static,
+{
     /// Create new parallel state root calculator.
-    pub fn new(view: ConsistentDbView<Factory>, input: TrieInput) -> Self {
+    pub fn new(
+        view: ConsistentDbView<Factory>,
+        input: TrieInput,
+        provider_ro: Option<Result<<Factory as DatabaseProviderFactory>::Provider, ProviderError>>,
+    ) -> Self {
         Self {
             view,
             input,
+            provider_ro,
             #[cfg(feature = "metrics")]
             metrics: ParallelStateRootMetrics::default(),
         }
@@ -81,7 +94,7 @@ where
     }
 
     fn calculate(
-        self,
+        mut self,
         retain_updates: bool,
         miss_leaves_cache: Option<Arc<DashMap<B256, (B256, StorageTrieUpdates)>>>,
     ) -> Result<(B256, TrieUpdates), ParallelStateRootError> {
@@ -108,10 +121,11 @@ where
             let metrics = self.metrics.storage_trie.clone();
 
             let (tx, rx) = std::sync::mpsc::sync_channel(1);
-
+            let provider_ro = self.provider_ro.take();
             rayon::spawn_fifo(move || {
                 let result = (|| -> Result<_, ParallelStateRootError> {
-                    let provider_ro = view.provider_ro()?;
+                    let provider_ro =
+                        if let Some(ro) = provider_ro { ro? } else { view.provider_ro()? };
                     let trie_cursor_factory = InMemoryTrieCursorFactory::new(
                         DatabaseTrieCursorFactory::new(provider_ro.tx_ref()),
                         &trie_nodes_sorted,
@@ -138,7 +152,8 @@ where
         trace!(target: "trie::parallel_state_root", "calculating state root");
         let mut trie_updates = TrieUpdates::default();
 
-        let provider_ro = self.view.provider_ro()?;
+        let provider_ro =
+            if let Some(ro) = self.provider_ro { ro? } else { self.view.provider_ro()? };
         let trie_cursor_factory = InMemoryTrieCursorFactory::new(
             DatabaseTrieCursorFactory::new(provider_ro.tx_ref()),
             &trie_nodes_sorted,
