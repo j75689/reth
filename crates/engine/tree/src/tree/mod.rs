@@ -2268,34 +2268,22 @@ where
         trace!(target: "engine::tree", block=?BlockNumHash::new(block_number, block_hash), "Calculating block state root");
         if !self.skip_state_root_validation {
             let root_time = Instant::now();
-            let mut state_root_result = None;
 
-            // We attempt to compute state root in parallel if we are currently not persisting
-            // anything to database. This is safe, because the database state cannot
-            // change until we finish parallel computation. It is important that nothing
-            // is being persisted as we are computing in parallel, because we initialize
-            // a different database transaction per thread and it might end up with a
-            // different view of the database.
-            let persistence_in_progress = self.persistence_state.in_progress();
-            if !persistence_in_progress {
-                state_root_result = match self.compute_state_root_parallel(
-                    block.parent_hash,
-                    &hashed_state,
-                    missing_leaves_cache,
-                ) {
-                    Ok((state_root, trie_output)) => Some((state_root, trie_output)),
-                    Err(ParallelStateRootError::Provider(ProviderError::ConsistentView(error))) => {
-                        debug!(target: "engine", %error, "Parallel state root computation failed consistency check, falling back");
-                        None
-                    }
-                    Err(error) => return Err(InsertBlockErrorKindTwo::Other(Box::new(error))),
-                };
-            }
+            let state_root_result = match self
+                .compute_state_root_parallel(block.parent_hash, &hashed_state, missing_leaves_cache)
+            {
+                Ok((state_root, trie_output)) => Some((state_root, trie_output)),
+                Err(ParallelStateRootError::Provider(ProviderError::ConsistentView(error))) => {
+                    debug!(target: "engine", %error, "Parallel state root computation failed consistency check, falling back");
+                    None
+                }
+                Err(error) => return Err(InsertBlockErrorKindTwo::Other(Box::new(error))),
+            };
 
             let (state_root, _trie_output) = if let Some(result) = state_root_result {
                 result
             } else {
-                debug!(target: "engine::tree", persistence_in_progress, "Failed to compute state root in parallel");
+                debug!(target: "engine::tree", block=?block.block.header.number, "Failed to compute state root in parallel");
                 state_provider.state_root_with_updates(hashed_state.clone())?
             };
 
