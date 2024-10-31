@@ -2269,9 +2269,11 @@ where
         if !self.skip_state_root_validation {
             let root_time = Instant::now();
 
-            let state_root_result = match self
-                .compute_state_root_parallel(block.parent_hash, &hashed_state, missing_leaves_cache)
-            {
+            let state_root_result = match self.compute_state_root_parallel(
+                block.parent_hash,
+                &hashed_state,
+                missing_leaves_cache,
+            ) {
                 Ok((state_root, trie_output)) => Some((state_root, trie_output)),
                 Err(ParallelStateRootError::Provider(ProviderError::ConsistentView(error))) => {
                     debug!(target: "engine", %error, "Parallel state root computation failed consistency check, falling back");
@@ -2379,9 +2381,9 @@ where
         input.append_ref(hashed_state);
 
         // Prepare db provider read-only transaction for parallel state root computation.
-        let provider_ro = consistent_view.provider_ro_without_best_number_check()?;
+        let provider_ro = self.provider.database_provider_ro()?;
 
-        ParallelStateRoot::new(consistent_view, input)
+        ParallelStateRoot::new(consistent_view, input, Some(Ok(provider_ro)))
             .incremental_root_with_updates_and_cache(missing_leaves_cache)
     }
 
