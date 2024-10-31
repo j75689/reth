@@ -2379,7 +2379,7 @@ where
         input.append_ref(hashed_state);
 
         // Prepare db provider read-only transaction for parallel state root computation.
-        let provider_ro = consistent_view.provider_ro()?;
+        let provider_ro = consistent_view.provider_ro_without_best_number_check()?;
 
         ParallelStateRoot::new(consistent_view, input)
             .incremental_root_with_updates_and_cache(missing_leaves_cache)

@@ -95,4 +95,26 @@ where
 
         Ok(provider_ro)
     }
+
+    /// Creates new read-only provider and performs consistency checks on the current tip.
+    pub fn provider_ro_without_best_number_check(&self) -> ProviderResult<Factory::Provider> {
+        // Create a new provider.
+        let provider_ro = self.factory.database_provider_ro()?;
+
+        // Check that the latest stored header number matches the number
+        // that consistent view was initialized with.
+        // The mismatch can happen if a new block was appended while
+        // the view was being used.
+        // We compare block hashes instead of block numbers to account for reorgs.
+        let last_num = provider_ro.last_block_number()?;
+        let tip = provider_ro.sealed_header(last_num)?.map(|h| h.hash());
+        if self.tip != tip {
+            return Err(ConsistentViewError::Inconsistent {
+                tip: GotExpected { got: tip, expected: self.tip },
+            }
+            .into())
+        }
+
+        Ok(provider_ro)
+    }
 }
