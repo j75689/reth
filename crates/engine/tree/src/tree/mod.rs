@@ -1204,7 +1204,7 @@ where
         }
 
         if self.persistence_state.in_progress() {
-            if self.skip_state_root_validation && !self.compute_state_root_in_background {
+            if self.skip_state_root_validation || !self.compute_state_root_in_background {
                 let (mut rx, start_time) = self
                     .persistence_state
                     .rx
