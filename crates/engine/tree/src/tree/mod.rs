@@ -541,6 +541,7 @@ impl<P: Debug, E: Debug, T: EngineTypes + Debug, Spec: Debug> std::fmt::Debug
             .field("invalid_block_hook", &format!("{:p}", self.invalid_block_hook))
             .field("engine_kind", &self.engine_kind)
             .field("skip_state_root_validation", &self.skip_state_root_validation)
+            .field("compute_state_root_in_background", &self.compute_state_root_in_background)
             .field("enable_prefetch", &self.enable_prefetch)
             .field("enable_execution_cache", &self.enable_execution_cache)
             .finish()
@@ -571,6 +572,7 @@ where
         config: TreeConfig,
         engine_kind: EngineApiKind,
         skip_state_root_validation: bool,
+        compute_state_root_in_background: bool,
         enable_prefetch: bool,
         enable_execution_cache: bool,
     ) -> Self {
@@ -594,7 +596,7 @@ where
             invalid_block_hook: Box::new(NoopInvalidBlockHook),
             engine_kind,
             skip_state_root_validation,
-            compute_state_root_in_background: true, // TODO: make this configurable
+            compute_state_root_in_background,
             enable_prefetch,
             enable_execution_cache,
         }
@@ -623,6 +625,7 @@ where
         invalid_block_hook: Box<dyn InvalidBlockHook>,
         kind: EngineApiKind,
         skip_state_root_validation: bool,
+        compute_state_root_in_background: bool,
         enable_prefetch: bool,
         enable_execution_cache: bool,
     ) -> (Sender<FromEngine<EngineApiRequest<T>>>, UnboundedReceiver<EngineApiEvent>) {
@@ -657,6 +660,7 @@ where
             config,
             kind,
             skip_state_root_validation,
+            compute_state_root_in_background,
             enable_prefetch,
             enable_execution_cache,
         );
@@ -1182,7 +1186,8 @@ where
                 let (blocks_to_persist, parent_hash) = self.get_canonical_blocks_to_persist();
                 if blocks_to_persist.is_empty() {
                     debug!(target: "engine::tree", "Returned empty set of blocks to persist");
-                } else if !self.skip_state_root_validation && self.compute_state_root_in_background {
+                } else if !self.skip_state_root_validation && self.compute_state_root_in_background
+                {
                     let (tx, rx) = oneshot::channel();
                     let _ = self.persistence.save_blocks_with_state_root_calculation(
                         blocks_to_persist,
@@ -2863,6 +2868,7 @@ mod tests {
                 payload_builder,
                 TreeConfig::default(),
                 EngineApiKind::Ethereum,
+                false,
                 false,
                 false,
                 false,

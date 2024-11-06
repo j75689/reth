@@ -80,6 +80,7 @@ where
         invalid_block_hook: Box<dyn InvalidBlockHook>,
         sync_metrics_tx: MetricEventsSender,
         skip_state_root_validation: bool,
+        compute_state_root_in_background: bool,
         enable_prefetch: bool,
         enable_execution_cache: bool,
     ) -> Self {
@@ -111,6 +112,7 @@ where
             invalid_block_hook,
             engine_kind,
             skip_state_root_validation,
+            compute_state_root_in_background,
             enable_prefetch,
             enable_execution_cache,
         );
@@ -225,6 +227,7 @@ mod tests {
             TreeConfig::default(),
             Box::new(NoopInvalidBlockHook::default()),
             sync_metrics_tx,
+            false,
             false,
             false,
             false,
