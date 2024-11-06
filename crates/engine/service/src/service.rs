@@ -90,6 +90,7 @@ where
 
         let persistence_handle = PersistenceHandle::spawn_service(
             provider,
+            blockchain_db.clone(),
             pruner,
             sync_metrics_tx,
             enable_execution_cache,

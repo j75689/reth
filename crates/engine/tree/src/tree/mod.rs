@@ -512,6 +512,8 @@ pub struct EngineApiTreeHandler<P, E, T: EngineTypes, Spec> {
     engine_kind: EngineApiKind,
     /// Flag indicating whether the state root validation should be skipped.
     skip_state_root_validation: bool,
+    /// Flag indicating whether to compute the state root in the background.
+    compute_state_root_in_background: bool,
     /// Flag indicating whether to enable prefetch.
     enable_prefetch: bool,
     /// Flag indicating whether the cache for execution is enabled.
@@ -573,7 +575,6 @@ where
         enable_execution_cache: bool,
     ) -> Self {
         let (incoming_tx, incoming) = std::sync::mpsc::channel();
-
         Self {
             provider,
             executor_provider,
@@ -593,6 +594,7 @@ where
             invalid_block_hook: Box::new(NoopInvalidBlockHook),
             engine_kind,
             skip_state_root_validation,
+            compute_state_root_in_background: true, // TODO: make this configurable
             enable_prefetch,
             enable_execution_cache,
         }
@@ -630,6 +632,7 @@ where
         let persistence_state = PersistenceState {
             last_persisted_block: BlockNumHash::new(best_block_number, header.hash()),
             rx: None,
+            rx_with_root_updates: None,
             remove_above_state: VecDeque::new(),
         };
 
@@ -680,7 +683,7 @@ where
     /// Run the engine API handler.
     ///
     /// This will block the current thread and process incoming messages.
-    pub fn run(mut self) {
+    pub fn run(&mut self) {
         loop {
             match self.try_recv_engine_message() {
                 Ok(Some(msg)) => {
@@ -1176,9 +1179,17 @@ where
                     self.persistence_state.start(rx);
                 }
             } else if self.should_persist() {
-                let blocks_to_persist = self.get_canonical_blocks_to_persist();
+                let (blocks_to_persist, parent_hash) = self.get_canonical_blocks_to_persist();
                 if blocks_to_persist.is_empty() {
                     debug!(target: "engine::tree", "Returned empty set of blocks to persist");
+                } else if !self.skip_state_root_validation && self.compute_state_root_in_background {
+                    let (tx, rx) = oneshot::channel();
+                    let _ = self.persistence.save_blocks_with_state_root_calculation(
+                        blocks_to_persist,
+                        parent_hash,
+                        tx,
+                    );
+                    self.persistence_state.start_with_root_update(rx);
                 } else {
                     let (tx, rx) = oneshot::channel();
                     let _ = self.persistence.save_blocks(blocks_to_persist, tx);
@@ -1188,33 +1199,72 @@ where
         }
 
         if self.persistence_state.in_progress() {
-            let (mut rx, start_time) = self
-                .persistence_state
-                .rx
-                .take()
-                .expect("if a persistence task is in progress Receiver must be Some");
-            // Check if persistence has complete
-            match rx.try_recv() {
-                Ok(last_persisted_hash_num) => {
-                    self.metrics.engine.persistence_duration.record(start_time.elapsed());
-                    let Some(BlockNumHash {
-                        hash: last_persisted_block_hash,
-                        number: last_persisted_block_number,
-                    }) = last_persisted_hash_num
-                    else {
-                        // if this happened, then we persisted no blocks because we sent an
-                        // empty vec of blocks
-                        warn!(target: "engine::tree", "Persistence task completed but did not persist any blocks");
-                        return Ok(())
-                    };
+            if self.skip_state_root_validation {
+                let (mut rx, start_time) = self
+                    .persistence_state
+                    .rx
+                    .take()
+                    .expect("if a persistence task is in progress Receiver must be Some");
+                // Check if persistence has complete
+                match rx.try_recv() {
+                    Ok(last_persisted_hash_num) => {
+                        self.metrics.engine.persistence_duration.record(start_time.elapsed());
+                        let Some(BlockNumHash {
+                            hash: last_persisted_block_hash,
+                            number: last_persisted_block_number,
+                        }) = last_persisted_hash_num
+                        else {
+                            // if this happened, then we persisted no blocks because we sent an
+                            // empty vec of blocks
+                            warn!(target: "engine::tree", "Persistence task completed but did not persist any blocks");
+                            return Ok(())
+                        };
 
-                    trace!(target: "engine::tree", ?last_persisted_block_hash, ?last_persisted_block_number, "Finished persisting, calling finish");
-                    self.persistence_state
-                        .finish(last_persisted_block_hash, last_persisted_block_number);
-                    self.on_new_persisted_block()?;
+                        trace!(target: "engine::tree", ?last_persisted_block_hash, ?last_persisted_block_number, "Finished persisting, calling finish");
+                        self.persistence_state
+                            .finish(last_persisted_block_hash, last_persisted_block_number);
+                        self.on_new_persisted_block()?;
+                    }
+                    Err(TryRecvError::Closed) => return Err(TryRecvError::Closed.into()),
+                    Err(TryRecvError::Empty) => self.persistence_state.rx = Some((rx, start_time)),
                 }
-                Err(TryRecvError::Closed) => return Err(TryRecvError::Closed.into()),
-                Err(TryRecvError::Empty) => self.persistence_state.rx = Some((rx, start_time)),
+            } else {
+                let (mut rx, start_time) = self
+                    .persistence_state
+                    .rx_with_root_updates
+                    .take()
+                    .expect("if a persistence task is in progress Receiver must be Some");
+                // Check if persistence has complete
+                match rx.try_recv() {
+                    Ok(persistence_result) => {
+                        let elapsed = start_time.elapsed();
+                        let (last_persisted_hash_num, root_updates) = persistence_result;
+                        self.metrics
+                            .block_validation
+                            .record_state_root(&root_updates, elapsed.as_secs_f64());
+
+                        self.metrics.engine.persistence_duration.record(elapsed);
+                        let Some(BlockNumHash {
+                            hash: last_persisted_block_hash,
+                            number: last_persisted_block_number,
+                        }) = last_persisted_hash_num
+                        else {
+                            // if this happened, then we persisted no blocks because we sent an
+                            // empty vec of blocks
+                            warn!(target: "engine::tree", "Persistence task completed but did not persist any blocks");
+                            return Ok(())
+                        };
+
+                        trace!(target: "engine::tree", ?last_persisted_block_hash, ?last_persisted_block_number, "Finished persisting, calling finish");
+                        self.persistence_state
+                            .finish(last_persisted_block_hash, last_persisted_block_number);
+                        self.on_new_persisted_block()?;
+                    }
+                    Err(TryRecvError::Closed) => return Err(TryRecvError::Closed.into()),
+                    Err(TryRecvError::Empty) => {
+                        self.persistence_state.rx_with_root_updates = Some((rx, start_time))
+                    }
+                }
             }
         }
         Ok(())
@@ -1498,7 +1548,7 @@ where
     /// Returns a batch of consecutive canonical blocks to persist in the range
     /// `(last_persisted_number .. canonical_head - threshold]` . The expected
     /// order is oldest -> newest.
-    fn get_canonical_blocks_to_persist(&self) -> Vec<ExecutedBlock> {
+    fn get_canonical_blocks_to_persist(&self) -> (Vec<ExecutedBlock>, B256) {
         let mut blocks_to_persist = Vec::new();
         let mut current_hash = self.state.tree_state.canonical_block_hash();
         let last_persisted_number = self.persistence_state.last_persisted_block.number;
@@ -1524,7 +1574,7 @@ where
         // reverse the order so that the oldest block comes first
         blocks_to_persist.reverse();
 
-        blocks_to_persist
+        (blocks_to_persist, current_hash)
     }
 
     /// This clears the blocks from the in-memory tree state that have been persisted to the
@@ -2266,7 +2316,7 @@ where
         let mut trie_output: TrieUpdates = TrieUpdates::default();
 
         trace!(target: "engine::tree", block=?BlockNumHash::new(block_number, block_hash), "Calculating block state root");
-        if !self.skip_state_root_validation {
+        if !self.skip_state_root_validation && !self.compute_state_root_in_background {
             let root_time = Instant::now();
             let mut state_root_result = None;
 
@@ -3637,7 +3687,7 @@ mod tests {
             .with_persistence_threshold(persistence_threshold)
             .with_memory_block_buffer_target(memory_block_buffer_target);
 
-        let blocks_to_persist = test_harness.tree.get_canonical_blocks_to_persist();
+        let (blocks_to_persist, _) = test_harness.tree.get_canonical_blocks_to_persist();
 
         let expected_blocks_to_persist_length: usize =
             (canonical_head_number - memory_block_buffer_target - last_persisted_block_number)
@@ -3658,7 +3708,7 @@ mod tests {
 
         assert!(test_harness.tree.state.tree_state.block_by_hash(fork_block_hash).is_some());
 
-        let blocks_to_persist = test_harness.tree.get_canonical_blocks_to_persist();
+        let (blocks_to_persist, _) = test_harness.tree.get_canonical_blocks_to_persist();
         assert_eq!(blocks_to_persist.len(), expected_blocks_to_persist_length);
 
         // check that the fork block is not included in the blocks to persist
