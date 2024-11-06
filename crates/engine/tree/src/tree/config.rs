@@ -4,7 +4,7 @@
 pub const DEFAULT_PERSISTENCE_THRESHOLD: u64 = 16;
 
 /// How close to the canonical head we persist blocks.
-pub const DEFAULT_MEMORY_BLOCK_BUFFER_TARGET: u64 = 2;
+pub const DEFAULT_MEMORY_BLOCK_BUFFER_TARGET: u64 = 16;
 
 const DEFAULT_BLOCK_BUFFER_LIMIT: u32 = 256;
 const DEFAULT_MAX_INVALID_HEADER_CACHE_LENGTH: u32 = 256;
