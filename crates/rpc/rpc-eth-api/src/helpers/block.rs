@@ -206,7 +206,7 @@ pub trait EthBlocks: LoadBlock {
                 return Ok(None);
             }
 
-            let sidecars = if let Some(block_hash) = LoadBlock::provider(self)
+            let sidecars = if let Some(block_hash) = self.provider()
                 .block_hash_for_id(block_id)
                 .map_err(Self::Error::from_eth_err)?
             {

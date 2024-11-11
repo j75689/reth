@@ -1,4 +1,7 @@
 //! Loads a pending block from database. Helper trait for `eth_` call and trace RPC methods.
+use crate::{
+    FromEthApiError
+};
 
 use std::sync::Arc;
 
@@ -190,8 +193,8 @@ pub trait Trace: LoadState<Evm: ConfigureEvm<Header = Header>> {
             // block the transaction is included in
             let parent_block = block.parent_hash;
             let parent_beacon_block_root = block.parent_beacon_block_root;
-            let parent_timestamp = LoadState::cache(self)
-                .get_block(parent_block)
+            let parent_timestamp = self.cache()
+                .get_sealed_block_with_senders(parent_block)
                 .await
                 .map_err(Self::Error::from_eth_err)?
                 .map(|block| block.timestamp)
@@ -226,7 +229,7 @@ pub trait Trace: LoadState<Evm: ConfigureEvm<Header = Header>> {
                     parent_timestamp,
                 )?;
 
-                let tx_env = Call::evm_config(&this).tx_env(&tx);
+                let tx_env = RpcNodeCore::evm_config(&this).tx_env(tx.as_signed(), tx.signer());
                 #[cfg(feature = "bsc")]
                 let tx_env = {
                     let mut tx_env = tx_env;
@@ -239,7 +242,7 @@ pub trait Trace: LoadState<Evm: ConfigureEvm<Header = Header>> {
                 let env = EnvWithHandlerCfg::new_with_cfg_env(
                     cfg,
                     block_env,
-                    RpcNodeCore::evm_config(&this).tx_env(tx.as_signed(), tx.signer()),
+                    tx_env,
                 );
                 let (res, _) =
                     this.inspect(StateCacheDbRefMutWrapper(&mut db), env, &mut inspector)?;

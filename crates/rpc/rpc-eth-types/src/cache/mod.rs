@@ -8,7 +8,7 @@ use reth_errors::{ProviderError, ProviderResult};
 use reth_evm::{provider::EvmEnvProvider, ConfigureEvm};
 use reth_execution_types::Chain;
 use reth_primitives::{
-    BlobSidecars, Block, BlockHashOrNumber, BlockWithSenders, Header, Receipt, SealedBlock,
+    BlobSidecars, Block, BlockWithSenders, Header, Receipt, SealedBlock,
     SealedBlockWithSenders, TransactionSigned, TransactionSignedEcRecovered,
 };
 use reth_storage_api::{BlockReader, StateProviderFactory, TransactionVariant};

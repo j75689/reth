@@ -38,16 +38,11 @@ pub struct RollupArgs {
     #[arg(long = "rollup.discovery.v4", default_value = "false")]
     pub discovery_v4: bool,
 
-<<<<<<< HEAD
-    /// Enable the engine2 experimental features on op-reth binary
-    #[arg(long = "engine.experimental", default_value = "true")]
-=======
     /// Enable the experimental engine features on reth binary
     ///
     /// DEPRECATED: experimental engine is default now, use --engine.legacy to enable the legacy
     /// functionality
-    #[arg(long = "engine.experimental", default_value = "false")]
->>>>>>> v1.1.1
+    #[arg(long = "engine.experimental", default_value = "true")]
     pub experimental: bool,
 
     /// Enable the legacy engine on reth binary
@@ -71,12 +66,8 @@ impl Default for RollupArgs {
             enable_genesis_walkback: false,
             compute_pending_block: false,
             discovery_v4: false,
-<<<<<<< HEAD
             experimental: true,
-=======
-            experimental: false,
             legacy: false,
->>>>>>> v1.1.1
             persistence_threshold: DEFAULT_PERSISTENCE_THRESHOLD,
             memory_block_buffer_target: DEFAULT_MEMORY_BLOCK_BUFFER_TARGET,
         }
@@ -136,7 +127,7 @@ mod tests {
             "--rollup.sequencer-http",
             "http://host:port",
         ])
-        .args;
+            .args;
         assert_eq!(args, expected_args);
     }
 
@@ -166,7 +157,7 @@ mod tests {
             "--rollup.sequencer-http",
             "http://host:port",
         ])
-        .args;
+            .args;
         assert_eq!(args, expected_args);
     }
 }

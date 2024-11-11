@@ -23,6 +23,7 @@ reth-bsc-forks.workspace = true
 
 # ethereum
 alloy-chains.workspace = true
+alloy-consensus.workspace = true
 alloy-genesis.workspace = true
 alloy-primitives.workspace = true
 

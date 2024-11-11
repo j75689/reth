@@ -13,6 +13,7 @@ use std::{
     time::SystemTime,
 };
 
+use alloy_consensus::EMPTY_OMMER_ROOT_HASH;
 use alloy_json_abi::JsonAbi;
 use alloy_primitives::{Address, B256, U256};
 use alloy_rlp::Decodable;
@@ -30,7 +31,7 @@ use reth_consensus_common::validation::{
 use reth_primitives::{
     constants::EMPTY_MIX_HASH,
     parlia::{ParliaConfig, Snapshot, VoteAddress, VoteAttestation},
-    BlockWithSenders, GotExpected, Header, SealedBlock, SealedHeader, EMPTY_OMMER_ROOT_HASH,
+    BlockWithSenders, GotExpected, Header, SealedBlock, SealedHeader,
 };
 use secp256k1::{
     ecdsa::{RecoverableSignature, RecoveryId},

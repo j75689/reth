@@ -38,13 +38,11 @@ reth-optimism-chainspec.workspace = true
 reth-optimism-consensus.workspace = true
 reth-optimism-forks.workspace = true
 
-<<<<<<< HEAD
-# bsc
-reth-bsc-consensus.workspace = true
-=======
 # revm with required optimism features
 revm = { workspace = true, features = ["secp256k1", "blst", "c-kzg"] }
->>>>>>> v1.1.1
+
+# bsc
+reth-bsc-consensus.workspace = true
 
 # ethereum
 alloy-eips.workspace = true
@@ -108,13 +106,8 @@ test-utils = [
 	"reth-trie-db/test-utils",
 	"revm/test-utils"
 ]
-<<<<<<< HEAD
 opbnb = [
-    "reth-primitives/opbnb",
-    "reth-optimism-evm/opbnb",
-    "reth-optimism-payload-builder/opbnb",
+	"reth-primitives/opbnb",
+	"reth-optimism-evm/opbnb",
+	"reth-optimism-payload-builder/opbnb",
 ]
-asm-keccak = ["reth-primitives/asm-keccak"]
-test-utils = ["reth-node-builder/test-utils"]
-=======
->>>>>>> v1.1.1

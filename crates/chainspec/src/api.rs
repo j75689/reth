@@ -63,9 +63,7 @@ pub trait EthChainSpec: Send + Sync + Unpin + Debug {
     }
 
     /// Returns `true` if this chain contains Binance Smart Chain configuration.
-    fn is_bsc(&self) -> bool {
-        self.chain().is_bsc()
-    }
+    fn is_bsc(&self) -> bool;
 }
 
 impl EthChainSpec for ChainSpec {

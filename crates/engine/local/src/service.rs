@@ -101,6 +101,9 @@ where
             tree_config,
             invalid_block_hook,
             engine_kind,
+            false, // TODO: confirm these params
+            false,
+            false,
         );
 
         let handler = EngineApiRequestHandler::new(to_tree_tx, from_tree);

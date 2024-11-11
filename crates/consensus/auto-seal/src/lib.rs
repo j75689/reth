@@ -368,7 +368,6 @@ impl StorageInner {
                 ommers: ommers.clone(),
                 withdrawals: withdrawals.clone(),
                 sidecars: None,
-                requests: requests.clone(),
             },
         }
         .with_recovered_senders()
@@ -397,7 +396,6 @@ impl StorageInner {
             ommers,
             withdrawals,
             sidecars: None,
-            requests,
         };
         trace!(target: "consensus::auto", ?execution_outcome, ?header, ?body, "executed block, calculating state root and completing header");
 

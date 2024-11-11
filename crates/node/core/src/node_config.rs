@@ -456,6 +456,9 @@ impl<ChainSpec> NodeConfig<ChainSpec> {
             db: self.db,
             dev: self.dev,
             pruning: self.pruning,
+            enable_prefetch: self.enable_prefetch,
+            skip_state_root_validation: self.skip_state_root_validation,
+            enable_execution_cache: self.enable_execution_cache,
         }
     }
 }

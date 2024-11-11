@@ -1,21 +1,13 @@
 //! Optimism block execution strategy.
 
-<<<<<<< HEAD
-use crate::{
-    l1::ensure_create2_deployer, OpChainSpec, OptimismBlockExecutionError, OptimismEvmConfig,
-};
-use alloy_primitives::{Address, BlockNumber, U256};
-use reth_chainspec::{ChainSpec, EthereumHardforks};
-=======
 use crate::{l1::ensure_create2_deployer, OpEvmConfig, OptimismBlockExecutionError};
 use alloc::{boxed::Box, sync::Arc, vec::Vec};
 use alloy_consensus::Transaction as _;
 use alloy_eips::eip7685::Requests;
-use core::fmt::Display;
+use alloy_primitives::{Address, BlockNumber};
 use op_alloy_consensus::DepositTransaction;
 use reth_chainspec::EthereumHardforks;
 use reth_consensus::ConsensusError;
->>>>>>> v1.1.1
 use reth_evm::{
     execute::{
         BasicBlockExecutorProvider, BlockExecutionError, BlockExecutionStrategy,
@@ -28,125 +20,20 @@ use reth_evm::{
 use reth_optimism_chainspec::OpChainSpec;
 use reth_optimism_consensus::validate_block_post_execution;
 use reth_optimism_forks::OptimismHardfork;
-<<<<<<< HEAD
-use reth_primitives::{BlockWithSenders, Header, Receipt, Receipts, TxType};
-use reth_prune_types::PruneModes;
-use reth_revm::{
-    batch::BlockBatchRecord,
-    db::states::{bundle_state::BundleRetention, StorageSlot},
-    state_change::post_block_balance_increments,
-    Evm, State,
-};
-use revm_primitives::{
-    db::{Database, DatabaseCommit},
-    BlockEnv, CfgEnvWithHandlerCfg, EnvWithHandlerCfg, EvmState, ResultAndState,
-};
-use std::{collections::HashMap, fmt::Display, str::FromStr, sync::Arc};
-use tokio::sync::mpsc::UnboundedSender;
-use tracing::{debug, trace};
-=======
 use reth_primitives::{BlockWithSenders, Header, Receipt, TxType};
-use reth_revm::{Database, State};
+use reth_revm::{
+    db::states::{ StorageSlot},
+    Database, State,
+};
 use revm_primitives::{
     db::DatabaseCommit, BlockEnv, CfgEnvWithHandlerCfg, EnvWithHandlerCfg, ResultAndState, U256,
 };
+use std::{collections::HashMap, fmt::Display, str::FromStr};
 use tracing::trace;
->>>>>>> v1.1.1
 
 /// Factory for [`OpExecutionStrategy`].
 #[derive(Debug, Clone)]
-<<<<<<< HEAD
-pub struct OpExecutorProvider<EvmConfig = OptimismEvmConfig> {
-    chain_spec: Arc<OpChainSpec>,
-    evm_config: EvmConfig,
-}
-
-impl OpExecutorProvider {
-    /// Creates a new default optimism executor provider.
-    pub fn optimism(chain_spec: Arc<OpChainSpec>) -> Self {
-        Self::new(chain_spec.clone(), OptimismEvmConfig::new(chain_spec))
-    }
-}
-
-impl<EvmConfig> OpExecutorProvider<EvmConfig> {
-    /// Creates a new executor provider.
-    pub const fn new(chain_spec: Arc<OpChainSpec>, evm_config: EvmConfig) -> Self {
-        Self { chain_spec, evm_config }
-    }
-}
-
-impl<EvmConfig> OpExecutorProvider<EvmConfig>
-where
-    EvmConfig: ConfigureEvm<Header = Header>,
-{
-    fn op_executor<DB>(
-        &self,
-        db: DB,
-        prefetch_tx: Option<UnboundedSender<EvmState>>,
-    ) -> OpBlockExecutor<EvmConfig, DB>
-    where
-        DB: Database<Error: Into<ProviderError> + Display>,
-    {
-        if let Some(tx) = prefetch_tx {
-            OpBlockExecutor::new_with_prefetch_tx(
-                self.chain_spec.clone(),
-                self.evm_config.clone(),
-                State::builder()
-                    .with_database(db)
-                    .with_bundle_update()
-                    .without_state_clear()
-                    .build(),
-                tx,
-            )
-        } else {
-            OpBlockExecutor::new(
-                self.chain_spec.clone(),
-                self.evm_config.clone(),
-                State::builder()
-                    .with_database(db)
-                    .with_bundle_update()
-                    .without_state_clear()
-                    .build(),
-            )
-        }
-    }
-}
-
-impl<EvmConfig> BlockExecutorProvider for OpExecutorProvider<EvmConfig>
-where
-    EvmConfig: ConfigureEvm<Header = Header>,
-{
-    type Executor<DB: Database<Error: Into<ProviderError> + Display>> =
-        OpBlockExecutor<EvmConfig, DB>;
-
-    type BatchExecutor<DB: Database<Error: Into<ProviderError> + Display>> =
-        OpBatchExecutor<EvmConfig, DB>;
-    fn executor<DB>(
-        &self,
-        db: DB,
-        prefetch_tx: Option<UnboundedSender<EvmState>>,
-    ) -> Self::Executor<DB>
-    where
-        DB: Database<Error: Into<ProviderError> + Display>,
-    {
-        self.op_executor(db, prefetch_tx)
-    }
-
-    fn batch_executor<DB>(&self, db: DB) -> Self::BatchExecutor<DB>
-    where
-        DB: Database<Error: Into<ProviderError> + Display>,
-    {
-        let executor = self.op_executor(db, None);
-        OpBatchExecutor { executor, batch_record: BlockBatchRecord::default() }
-    }
-}
-
-/// Helper container type for EVM with chain spec.
-#[derive(Debug, Clone)]
-pub struct OpEvmExecutor<EvmConfig> {
-=======
 pub struct OpExecutionStrategyFactory<EvmConfig = OpEvmConfig> {
->>>>>>> v1.1.1
     /// The chainspec
     chain_spec: Arc<OpChainSpec>,
     /// How to create an EVM.
@@ -170,31 +57,12 @@ impl<EvmConfig> OpExecutionStrategyFactory<EvmConfig> {
 impl<EvmConfig> BlockExecutionStrategyFactory for OpExecutionStrategyFactory<EvmConfig>
 where
     EvmConfig:
-        Clone + Unpin + Sync + Send + 'static + ConfigureEvm<Header = alloy_consensus::Header>,
+    Clone + Unpin + Sync + Send + 'static + ConfigureEvm<Header = alloy_consensus::Header>,
 {
-<<<<<<< HEAD
-    /// Executes the transactions in the block and returns the receipts.
-    ///
-    /// This applies the pre-execution changes, and executes the transactions.
-    ///
-    /// The optional `state_hook` will be executed with the state changes if present.
-    ///
-    /// # Note
-    ///
-    /// It does __not__ apply post-execution changes.
-    fn execute_pre_and_transactions<Ext, DB, F>(
-        &self,
-        block: &BlockWithSenders,
-        mut evm: Evm<'_, Ext, &mut State<DB>>,
-        state_hook: Option<F>,
-        tx: Option<UnboundedSender<EvmState>>,
-    ) -> Result<(Vec<Receipt>, u64), BlockExecutionError>
-=======
     type Strategy<DB: Database<Error: Into<ProviderError> + Display>> =
-        OpExecutionStrategy<DB, EvmConfig>;
+    OpExecutionStrategy<DB, EvmConfig>;
 
     fn create_strategy<DB>(&self, db: DB) -> Self::Strategy<DB>
->>>>>>> v1.1.1
     where
         DB: Database<Error: Into<ProviderError> + Display>,
     {
@@ -309,7 +177,7 @@ where
                     transaction_gas_limit: transaction.gas_limit(),
                     block_available_gas,
                 }
-                .into())
+                    .into())
             }
 
             // An optimism block should never contain blob transactions.
@@ -348,20 +216,8 @@ where
                 ?transaction,
                 "Executed transaction"
             );
-<<<<<<< HEAD
-
-            system_caller.on_state(&result_and_state);
-=======
             self.system_caller.on_state(&result_and_state);
->>>>>>> v1.1.1
             let ResultAndState { result, state } = result_and_state;
-
-            if let Some(tx) = tx.as_ref() {
-                tx.send(state.clone()).unwrap_or_else(|err| {
-                    debug!(target: "evm_executor", ?err, "Failed to send post state to prefetch channel")
-                });
-            }
-
             evm.db_mut().commit(state);
 
             // append gas used
@@ -382,118 +238,25 @@ where
                 deposit_receipt_version: (transaction.is_deposit() &&
                     self.chain_spec
                         .is_fork_active_at_timestamp(OptimismHardfork::Canyon, block.timestamp))
-                .then_some(1),
+                    .then_some(1),
             });
         }
 
-<<<<<<< HEAD
-        Ok((receipts, cumulative_gas_used))
-    }
-}
-
-/// A basic Optimism block executor.
-///
-/// Expected usage:
-/// - Create a new instance of the executor.
-/// - Execute the block.
-#[derive(Debug)]
-pub struct OpBlockExecutor<EvmConfig, DB> {
-    /// Chain specific evm config that's used to execute a block.
-    executor: OpEvmExecutor<EvmConfig>,
-    /// The state to use for execution
-    state: State<DB>,
-    /// Prefetch channel
-    prefetch_tx: Option<UnboundedSender<EvmState>>,
-}
-
-impl<EvmConfig, DB> OpBlockExecutor<EvmConfig, DB> {
-    /// Creates a new Optimism block executor.
-    pub const fn new(
-        chain_spec: Arc<OpChainSpec>,
-        evm_config: EvmConfig,
-        state: State<DB>,
-    ) -> Self {
-        Self { executor: OpEvmExecutor { chain_spec, evm_config }, state, prefetch_tx: None }
-    }
-
-    /// Creates a new Optimism block executor with a prefetch channel.
-    pub const fn new_with_prefetch_tx(
-        chain_spec: Arc<OpChainSpec>,
-        evm_config: EvmConfig,
-        state: State<DB>,
-        tx: UnboundedSender<EvmState>,
-    ) -> Self {
-        Self { executor: OpEvmExecutor { chain_spec, evm_config }, state, prefetch_tx: Some(tx) }
-=======
         Ok(ExecuteOutput { receipts, gas_used: cumulative_gas_used })
->>>>>>> v1.1.1
     }
 
     fn apply_post_execution_changes(
         &mut self,
         block: &BlockWithSenders,
         total_difficulty: U256,
-<<<<<<< HEAD
-    ) -> Result<(Vec<Receipt>, u64), BlockExecutionError> {
-        self.execute_without_verification_with_state_hook(block, total_difficulty, None::<NoopHook>)
-    }
-
-    /// Execute a single block and apply the state changes to the internal state.
-    ///
-    /// Returns the receipts of the transactions in the block and the total gas used.
-    ///
-    /// Returns an error if execution fails.
-    fn execute_without_verification_with_state_hook<F>(
-        &mut self,
-        block: &BlockWithSenders,
-        total_difficulty: U256,
-        state_hook: Option<F>,
-    ) -> Result<(Vec<Receipt>, u64), BlockExecutionError>
-    where
-        F: OnStateHook,
-    {
-        // 1. prepare state on new block
-        self.on_new_block(&block.header);
-
-        // 2. configure the evm and execute
-        let env = self.evm_env_for_block(&block.header, total_difficulty);
-
-        let (receipts, gas_used) = {
-            let evm = self.executor.evm_config.evm_with_env(&mut self.state, env);
-            self.executor.execute_pre_and_transactions(
-                block,
-                evm,
-                state_hook,
-                self.prefetch_tx.clone(),
-            )
-        }?;
-
-        // 3. apply post execution changes
-        self.post_execution(block, total_difficulty)?;
-
-        Ok((receipts, gas_used))
-    }
-
-    /// Apply settings before a new block is executed.
-    pub(crate) fn on_new_block(&mut self, header: &Header) {
-        // Set state clear flag if the block is after the Spurious Dragon hardfork.
-        let state_clear_flag = self.chain_spec().is_spurious_dragon_active_at_block(header.number);
-        self.state.set_state_clear_flag(state_clear_flag);
-    }
-
-    /// Apply post execution state changes, including block rewards, withdrawals, and irregular DAO
-    /// hardfork state change.
-    pub fn post_execution(
-        &mut self,
-        block: &BlockWithSenders,
-        total_difficulty: U256,
-    ) -> Result<(), BlockExecutionError> {
+        _receipts: &[Receipt],
+    ) -> Result<Requests, Self::Error> {
         let balance_increments =
-            post_block_balance_increments(self.chain_spec(), block, total_difficulty);
+            post_block_balance_increments(&self.chain_spec.clone(), block, total_difficulty);
 
         #[cfg(all(feature = "optimism", feature = "opbnb"))]
         if self
-            .chain_spec()
+            .chain_spec
             .fork(OptimismHardfork::PreContractForkBlock)
             .transitions_at_block(block.number)
         {
@@ -534,12 +297,7 @@ impl<EvmConfig, DB> OpBlockExecutor<EvmConfig, DB> {
                 (governance_token_contract_address, governance_token_change),
             ]);
         }
-=======
-        _receipts: &[Receipt],
-    ) -> Result<Requests, Self::Error> {
-        let balance_increments =
-            post_block_balance_increments(&self.chain_spec.clone(), block, total_difficulty);
->>>>>>> v1.1.1
+
         // increment balances
         self.state
             .increment_balances(balance_increments)
@@ -570,170 +328,16 @@ impl<EvmConfig, DB> OpBlockExecutor<EvmConfig, DB> {
     }
 }
 
-<<<<<<< HEAD
-impl<EvmConfig, DB> Executor<DB> for OpBlockExecutor<EvmConfig, DB>
-where
-    EvmConfig: ConfigureEvm<Header = Header>,
-    DB: Database<Error: Into<ProviderError> + Display>,
-{
-    type Input<'a> = BlockExecutionInput<'a, BlockWithSenders, Header>;
-    type Output = BlockExecutionOutput<Receipt>;
-    type Error = BlockExecutionError;
-
-    /// Executes the block and commits the state changes.
-    ///
-    /// Returns the receipts of the transactions in the block.
-    ///
-    /// Returns an error if the block could not be executed or failed verification.
-    ///
-    /// State changes are committed to the database.
-    fn execute(mut self, input: Self::Input<'_>) -> Result<Self::Output, Self::Error> {
-        let BlockExecutionInput { block, total_difficulty, .. } = input;
-        let (receipts, gas_used) = self.execute_without_verification(block, total_difficulty)?;
-
-        // NOTE: we need to merge keep the reverts for the bundle retention
-        self.state.merge_transitions(BundleRetention::Reverts);
-
-        Ok(BlockExecutionOutput {
-            state: self.state.take_bundle(),
-            receipts,
-            requests: vec![],
-            gas_used,
-            snapshot: None,
-        })
-    }
-
-    fn execute_with_state_closure<F>(
-        mut self,
-        input: Self::Input<'_>,
-        mut witness: F,
-    ) -> Result<Self::Output, Self::Error>
-    where
-        F: FnMut(&State<DB>),
-    {
-        let BlockExecutionInput { block, total_difficulty, .. } = input;
-        let (receipts, gas_used) = self.execute_without_verification(block, total_difficulty)?;
-
-        // NOTE: we need to merge keep the reverts for the bundle retention
-        self.state.merge_transitions(BundleRetention::Reverts);
-        witness(&self.state);
-
-        Ok(BlockExecutionOutput {
-            state: self.state.take_bundle(),
-            receipts,
-            requests: vec![],
-            gas_used,
-            snapshot: None,
-        })
-    }
-
-    fn execute_with_state_hook<F>(
-        mut self,
-        input: Self::Input<'_>,
-        state_hook: F,
-    ) -> Result<Self::Output, Self::Error>
-    where
-        F: OnStateHook,
-    {
-        let BlockExecutionInput { block, total_difficulty, .. } = input;
-        let (receipts, gas_used) = self.execute_without_verification_with_state_hook(
-            block,
-            total_difficulty,
-            Some(state_hook),
-        )?;
-
-        // NOTE: we need to merge keep the reverts for the bundle retention
-        self.state.merge_transitions(BundleRetention::Reverts);
-
-        Ok(BlockExecutionOutput {
-            state: self.state.take_bundle(),
-            receipts,
-            requests: vec![],
-            gas_used,
-            snapshot: None,
-        })
-    }
-}
-
-/// An executor for a batch of blocks.
-///
-/// State changes are tracked until the executor is finalized.
-=======
 /// Helper type with backwards compatible methods to obtain executor providers.
->>>>>>> v1.1.1
 #[derive(Debug)]
 pub struct OpExecutorProvider;
 
-<<<<<<< HEAD
-impl<EvmConfig, DB> OpBatchExecutor<EvmConfig, DB> {
-    /// Returns the receipts of the executed blocks.
-    pub const fn receipts(&self) -> &Receipts {
-        self.batch_record.receipts()
-    }
-
-    /// Returns mutable reference to the state that wraps the underlying database.
-    pub fn state_mut(&mut self) -> &mut State<DB> {
-        self.executor.state_mut()
-    }
-}
-
-impl<EvmConfig, DB> BatchExecutor<DB> for OpBatchExecutor<EvmConfig, DB>
-where
-    EvmConfig: ConfigureEvm<Header = Header>,
-    DB: Database<Error: Into<ProviderError> + Display>,
-{
-    type Input<'a> = BlockExecutionInput<'a, BlockWithSenders, Header>;
-    type Output = ExecutionOutcome;
-    type Error = BlockExecutionError;
-
-    fn execute_and_verify_one(&mut self, input: Self::Input<'_>) -> Result<(), Self::Error> {
-        let BlockExecutionInput { block, total_difficulty, .. } = input;
-
-        if self.batch_record.first_block().is_none() {
-            self.batch_record.set_first_block(block.number);
-        }
-        let (receipts, _gas_used) =
-            self.executor.execute_without_verification(block, total_difficulty)?;
-
-        validate_block_post_execution(block, self.executor.chain_spec(), &receipts)?;
-
-        // prepare the state according to the prune mode
-        let retention = self.batch_record.bundle_retention(block.number);
-        self.executor.state.merge_transitions(retention);
-
-        // store receipts in the set
-        self.batch_record.save_receipts(receipts)?;
-
-        Ok(())
-    }
-
-    fn finalize(mut self) -> Self::Output {
-        ExecutionOutcome::new(
-            self.executor.state.take_bundle(),
-            self.batch_record.take_receipts(),
-            self.batch_record.first_block().unwrap_or_default(),
-            self.batch_record.take_requests(),
-        )
-    }
-
-    fn set_tip(&mut self, tip: BlockNumber) {
-        self.batch_record.set_tip(tip);
-    }
-
-    fn set_prune_modes(&mut self, prune_modes: PruneModes) {
-        self.batch_record.set_prune_modes(prune_modes);
-    }
-
-    fn size_hint(&self) -> Option<usize> {
-        Some(self.executor.state.bundle_state.size_hint())
-=======
 impl OpExecutorProvider {
     /// Creates a new default optimism executor strategy factory.
     pub fn optimism(
         chain_spec: Arc<OpChainSpec>,
     ) -> BasicBlockExecutorProvider<OpExecutionStrategyFactory> {
         BasicBlockExecutorProvider::new(OpExecutionStrategyFactory::optimism(chain_spec))
->>>>>>> v1.1.1
     }
 }
 
@@ -772,7 +376,7 @@ mod tests {
             StorageValue::from_str(
                 "0x0000000000000000000000000000000000001db0000d27300000000000000005",
             )
-            .unwrap(),
+                .unwrap(),
         );
 
         db.insert_account(L1_BLOCK_CONTRACT, l1_block_contract_account, None, l1_block_storage);

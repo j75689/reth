@@ -31,6 +31,7 @@ reth-bsc-forks.workspace = true
 reth-bsc-primitives.workspace = true
 
 # eth
+alloy-eips.workspace = true
 alloy-rlp.workspace = true
 alloy-consensus.workspace = true
 alloy-dyn-abi.workspace = true

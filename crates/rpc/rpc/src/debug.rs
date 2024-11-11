@@ -22,10 +22,7 @@ use reth_evm::{
     ConfigureEvmEnv,
 };
 use reth_primitives::{Block, TransactionSignedEcRecovered};
-use reth_provider::{
-    BlockReaderIdExt, ChainSpecProvider, HeaderProvider, StateProofProvider, StateProviderFactory,
-    TransactionVariant,
-};
+use reth_provider::{BlockReader, BlockReaderIdExt, ChainSpecProvider, HeaderProvider, StateProofProvider, StateProviderFactory, TransactionVariant};
 use reth_revm::database::StateProviderDatabase;
 use reth_rpc_api::DebugApiServer;
 use reth_rpc_eth_api::{
@@ -82,10 +79,10 @@ impl<Provider, Eth, BlockExecutor> DebugApi<Provider, Eth, BlockExecutor> {
 impl<Provider, Eth, BlockExecutor> DebugApi<Provider, Eth, BlockExecutor>
 where
     Provider: BlockReaderIdExt
-        + HeaderProvider
-        + ChainSpecProvider<ChainSpec: EthereumHardforks>
-        + StateProviderFactory
-        + 'static,
+    + HeaderProvider
+    + ChainSpecProvider<ChainSpec: EthereumHardforks>
+    + StateProviderFactory
+    + 'static,
     Eth: EthApiTypes + TraceExt + 'static,
     BlockExecutor: BlockExecutorProvider,
 {
@@ -102,8 +99,8 @@ where
         cfg: CfgEnvWithHandlerCfg,
         block_env: BlockEnv,
         opts: GethDebugTracingOptions,
-        parent_timestamp: u64,
         parent_beacon_block_root: Option<B256>,
+        parent_timestamp: u64,
     ) -> Result<Vec<TraceResult>, Eth::Error> {
         if transactions.is_empty() {
             // nothing to trace
@@ -123,17 +120,17 @@ where
                     this.eth_api().evm_config().clone(),
                     this.eth_api().provider().chain_spec(),
                 )
-                .pre_block_beacon_root_contract_call(
-                    &mut db,
-                    &cfg,
-                    &block_env,
-                    parent_beacon_block_root,
-                )
-                .map_err(|_| {
-                    EthApiError::EvmCustom(
-                        "failed to apply 4788 beacon root system call".to_string(),
+                    .pre_block_beacon_root_contract_call(
+                        &mut db,
+                        &cfg,
+                        &block_env,
+                        parent_beacon_block_root,
                     )
-                })?;
+                    .map_err(|_| {
+                        EthApiError::EvmCustom(
+                            "failed to apply 4788 beacon root system call".to_string(),
+                        )
+                    })?;
 
                 let mut transactions = transactions.into_iter().enumerate().peekable();
 
@@ -178,7 +175,7 @@ where
                         before_system_tx = false;
                     }
 
-                    let tx_env = Call::evm_config(this.eth_api()).tx_env(&tx);
+                    let tx_env = RpcNodeCore::evm_config(this.eth_api()).tx_env(tx.as_signed(), tx.signer());
                     #[cfg(feature = "bsc")]
                     let tx_env = {
                         let mut tx_env = tx_env;
@@ -193,8 +190,6 @@ where
                             cfg.cfg_env.clone(),
                             block_env.clone(),
                             tx_env,
-                            RpcNodeCore::evm_config(this.eth_api())
-                                .tx_env(tx.as_signed(), tx.signer()),
                         ),
                         handler_cfg: cfg.handler_cfg,
                     };
@@ -284,10 +279,10 @@ where
             cfg,
             block_env,
             opts,
-            parent_timestamp,
             parent_beacon_block_root,
+            parent_timestamp,
         )
-        .await
+            .await
     }
 
     /// Replays a block and returns the trace of each transaction.
@@ -325,10 +320,10 @@ where
             cfg,
             block_env,
             opts,
-            parent_timestamp,
             block.parent_beacon_block_root,
+            parent_timestamp,
         )
-        .await
+            .await
     }
 
     /// Trace the transaction according to the provided options.
@@ -349,13 +344,13 @@ where
         // block the transaction is included in
         let state_at: BlockId = block.parent_hash.into();
         let block_hash = block.hash();
+        let parent_beacon_block_root = block.parent_beacon_block_root;
         let parent_timestamp = self
             .eth_api()
-            .block(state_at)
+            .block(block.parent_hash.into())
             .await?
             .map(|block| block.timestamp)
             .ok_or(EthApiError::UnknownParentBlock)?;
-        let parent_beacon_block_root = block.parent_beacon_block_root;
 
         let this = self.clone();
         self.eth_api()
@@ -372,17 +367,17 @@ where
                     this.eth_api().evm_config().clone(),
                     this.eth_api().provider().chain_spec(),
                 )
-                .pre_block_beacon_root_contract_call(
-                    &mut db,
-                    &cfg,
-                    &block_env,
-                    parent_beacon_block_root,
-                )
-                .map_err(|_| {
-                    EthApiError::EvmCustom(
-                        "failed to apply 4788 beacon root system call".to_string(),
+                    .pre_block_beacon_root_contract_call(
+                        &mut db,
+                        &cfg,
+                        &block_env,
+                        parent_beacon_block_root,
                     )
-                })?;
+                    .map_err(|_| {
+                        EthApiError::EvmCustom(
+                            "failed to apply 4788 beacon root system call".to_string(),
+                        )
+                    })?;
 
                 // replay all transactions prior to the targeted transaction
                 let index = this.eth_api().replay_transactions_until(
@@ -394,7 +389,7 @@ where
                     parent_timestamp,
                 )?;
 
-                let tx_env = Call::evm_config(this.eth_api()).tx_env(&tx);
+                let tx_env = RpcNodeCore::evm_config(this.eth_api()).tx_env(tx.as_signed(), tx.signer());
                 #[cfg(feature = "bsc")]
                 let tx_env = {
                     let mut tx_env = tx_env;
@@ -409,7 +404,6 @@ where
                         cfg.cfg_env.clone(),
                         block_env,
                         tx_env,
-                        RpcNodeCore::evm_config(this.eth_api()).tx_env(tx.as_signed(), tx.signer()),
                     ),
                     handler_cfg: cfg.handler_cfg,
                 };
@@ -425,7 +419,7 @@ where
                     }),
                     &mut None,
                 )
-                .map(|(trace, _)| trace)
+                    .map(|(trace, _)| trace)
             })
             .await
     }
@@ -954,7 +948,7 @@ where
                             config,
                             transaction_context.unwrap_or_default(),
                         )
-                        .map_err(Eth::Error::from_eth_err)?;
+                            .map_err(Eth::Error::from_eth_err)?;
                     let (res, env) = self.eth_api().inspect(&mut *db, env, &mut inspector)?;
 
                     let state = res.state.clone();
@@ -984,10 +978,10 @@ where
 impl<Provider, Eth, BlockExecutor> DebugApiServer for DebugApi<Provider, Eth, BlockExecutor>
 where
     Provider: BlockReaderIdExt
-        + HeaderProvider
-        + ChainSpecProvider<ChainSpec: EthereumHardforks>
-        + StateProviderFactory
-        + 'static,
+    + HeaderProvider
+    + ChainSpecProvider<ChainSpec: EthereumHardforks>
+    + StateProviderFactory
+    + 'static,
     Eth: EthApiSpec + EthTransactions + TraceExt + 'static,
     BlockExecutor: BlockExecutorProvider,
 {
