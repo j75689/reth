@@ -282,7 +282,7 @@ where
     type BatchExecutor<DB: Database<Error: Into<ProviderError> + Display>> =
         BasicBatchExecutor<F::Strategy<DB>, DB>;
 
-    fn executor<DB>(&self, db: DB, prefetch_rx: Option<UnboundedSender<EvmState>>) -> Self::Executor<DB>
+    fn executor<DB>(&self, db: DB, _prefetch_rx: Option<UnboundedSender<EvmState>>) -> Self::Executor<DB>
     where
         DB: Database<Error: Into<ProviderError> + Display>,
     {
@@ -335,7 +335,7 @@ where
     type Error = S::Error;
 
     fn execute(mut self, input: Self::Input<'_>) -> Result<Self::Output, Self::Error> {
-        let BlockExecutionInput { block, total_difficulty, ancestor_headers } = input;
+        let BlockExecutionInput { block, total_difficulty, .. } = input;
 
         self.strategy.apply_pre_execution_changes(block, total_difficulty)?;
         let ExecuteOutput { receipts, gas_used } =
@@ -355,7 +355,7 @@ where
     where
         F: FnMut(&State<DB>),
     {
-        let BlockExecutionInput { block, total_difficulty, ancestor_headers } = input;
+        let BlockExecutionInput { block, total_difficulty, .. } = input;
 
         self.strategy.apply_pre_execution_changes(block, total_difficulty)?;
         let ExecuteOutput { receipts, gas_used } =
@@ -378,7 +378,7 @@ where
     where
         H: OnStateHook + 'static,
     {
-        let BlockExecutionInput { block, total_difficulty, ancestor_headers } = input;
+        let BlockExecutionInput { block, total_difficulty, .. } = input;
 
         self.strategy.with_state_hook(Some(Box::new(state_hook)));
 
@@ -430,7 +430,7 @@ where
     type Error = BlockExecutionError;
 
     fn execute_and_verify_one(&mut self, input: Self::Input<'_>) -> Result<(), Self::Error> {
-        let BlockExecutionInput { block, total_difficulty, ancestor_headers } = input;
+        let BlockExecutionInput { block, total_difficulty, .. } = input;
 
         if self.batch_record.first_block().is_none() {
             self.batch_record.set_first_block(block.number);

@@ -27,11 +27,11 @@ reth-bsc-chainspec.workspace = true
 reth-bsc-forks.workspace = true
 reth-bsc-primitives.workspace = true
 
-# Revm
-revm-primitives.workspace = true
-
+# ethereum
+alloy-consensus.workspace = true
 alloy-genesis.workspace = true
 alloy-primitives.workspace = true
+revm-primitives.workspace = true
 
 # misc
 thiserror.workspace = true

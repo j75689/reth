@@ -1,6 +1,7 @@
 //! Loads a pending block from database. Helper trait for `eth_` transaction, call and trace RPC
 //! methods.
 
+use super::{LoadBlock, LoadPendingBlock, LoadState, LoadTransaction, SpawnBlocking, Trace};
 use crate::{
     AsEthApiError, FromEthApiError, FromEvmError, FullEthApiTypes, IntoEthApiError, RpcBlock,
     RpcNodeCore,
@@ -25,7 +26,7 @@ use reth_primitives::{
     },
     Header, TransactionSigned,
 };
-use reth_provider::{BlockIdReader, BlockReader, ChainSpecProvider, HeaderProvider, StateProvider};
+use reth_provider::{BlockIdReader, ChainSpecProvider, HeaderProvider, StateProvider};
 use reth_revm::{database::StateProviderDatabase, db::CacheDB, DatabaseRef};
 use reth_rpc_eth_types::{
     cache::db::{StateCacheDbRefMutWrapper, StateProviderTraitObjWrapper},
@@ -41,8 +42,6 @@ use reth_rpc_server_types::constants::gas_oracle::{CALL_STIPEND_GAS, ESTIMATE_GA
 use revm::{Database, DatabaseCommit, GetInspector};
 use revm_inspectors::{access_list::AccessListInspector, transfer::TransferInspector};
 use tracing::trace;
-
-use super::{LoadBlock, LoadPendingBlock, LoadState, LoadTransaction, SpawnBlocking, Trace};
 
 /// Result type for `eth_simulateV1` RPC method.
 pub type SimulatedBlocksResult<N, E> = Result<Vec<SimulatedBlock<RpcBlock<N>>>, E>;
@@ -213,7 +212,7 @@ pub trait EthCall: Call + LoadPendingBlock {
 
                 Ok(blocks)
             })
-                .await
+            .await
         }
     }
 
@@ -345,7 +344,7 @@ pub trait EthCall: Call + LoadPendingBlock {
 
                 Ok(results)
             })
-                .await
+            .await
         }
     }
 
@@ -366,7 +365,7 @@ pub trait EthCall: Call + LoadPendingBlock {
             self.spawn_blocking_io(move |this| {
                 this.create_access_list_with(cfg, block, at, request)
             })
-                .await
+            .await
         }
     }
 
@@ -564,8 +563,8 @@ pub trait Call: LoadState<Evm: ConfigureEvm<Header = Header>> + SpawnBlocking {
     where
         Self: LoadPendingBlock,
         F: FnOnce(StateCacheDbRefMutWrapper<'_, '_>, EnvWithHandlerCfg) -> Result<R, Self::Error>
-        + Send
-        + 'static,
+            + Send
+            + 'static,
         R: Send + 'static,
     {
         async move {
@@ -580,7 +579,7 @@ pub trait Call: LoadState<Evm: ConfigureEvm<Header = Header>> + SpawnBlocking {
 
                 f(StateCacheDbRefMutWrapper(&mut db), env)
             })
-                .await
+            .await
         }
     }
 
@@ -601,8 +600,8 @@ pub trait Call: LoadState<Evm: ConfigureEvm<Header = Header>> + SpawnBlocking {
     where
         Self: LoadBlock + LoadPendingBlock + LoadTransaction,
         F: FnOnce(TransactionInfo, ResultAndState, StateCacheDb<'_>) -> Result<R, Self::Error>
-        + Send
-        + 'static,
+            + Send
+            + 'static,
         R: Send + 'static,
     {
         async move {
@@ -648,17 +647,13 @@ pub trait Call: LoadState<Evm: ConfigureEvm<Header = Header>> + SpawnBlocking {
                     tx_env
                 };
 
-                let env = EnvWithHandlerCfg::new_with_cfg_env(
-                    cfg,
-                    block_env,
-                    tx_env,
-                );
+                let env = EnvWithHandlerCfg::new_with_cfg_env(cfg, block_env, tx_env);
 
                 let (res, _) = this.transact(&mut db, env)?;
                 f(tx_info, res, db)
             })
-                .await
-                .map(Some)
+            .await
+            .map(Some)
         }
     }
 
@@ -719,7 +714,7 @@ pub trait Call: LoadState<Evm: ConfigureEvm<Header = Header>> + SpawnBlocking {
                 let state = this.state_at_block_id(at)?;
                 this.estimate_gas_with(cfg, block_env, request, state, state_override)
             })
-                .await
+            .await
         }
     }
 
@@ -827,11 +822,11 @@ pub trait Call: LoadState<Evm: ConfigureEvm<Header = Header>> + SpawnBlocking {
             // with the block's gas limit to determine if the failure was due to
             // insufficient gas.
             Err(err)
-            if err.is_gas_too_high() &&
-                (tx_request_gas_limit.is_some() || tx_request_gas_price.is_some()) =>
-                {
-                    return Err(self.map_out_of_gas_err(block_env_gas_limit, env, &mut db))
-                }
+                if err.is_gas_too_high() &&
+                    (tx_request_gas_limit.is_some() || tx_request_gas_price.is_some()) =>
+            {
+                return Err(self.map_out_of_gas_err(block_env_gas_limit, env, &mut db))
+            }
             // Propagate other results (successful or other errors).
             ethres => ethres?,
         };

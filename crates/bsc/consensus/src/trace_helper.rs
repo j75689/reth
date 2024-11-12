@@ -1,13 +1,14 @@
 use std::sync::Arc;
 
-use alloy_primitives::{address, Address, U256};
+use alloy_primitives::{address, map::HashMap, Address, U256};
 use reth_bsc_forks::BscHardforks;
 use reth_bsc_primitives::system_contracts::get_upgrade_system_contracts;
-use reth_primitives::revm_primitives::{db::DatabaseRef, BlockEnv};
-use reth_revm::db::{
-    AccountState::{NotExisting, Touched},
-    CacheDB,
+use reth_primitives::revm_primitives::{
+    db::{Database, DatabaseCommit},
+    state::AccountStatus,
+    BlockEnv,
 };
+use reth_revm::primitives::Account;
 
 use crate::Parlia;
 
@@ -24,9 +25,9 @@ impl BscTraceHelper {
         Self { parlia }
     }
 
-    pub fn upgrade_system_contracts<ExtDB: DatabaseRef>(
+    pub fn upgrade_system_contracts<DB: Database + DatabaseCommit>(
         &self,
-        db: &mut CacheDB<ExtDB>,
+        db: &mut DB,
         block_env: &BlockEnv,
         parent_timestamp: u64,
         before_tx: bool,
@@ -43,38 +44,65 @@ impl BscTraceHelper {
             )
             .map_err(|_| BscTraceHelperError::GetUpgradeSystemContractsFailed)?;
 
+            let mut changeset: HashMap<_, _> = Default::default();
             for (k, v) in contracts {
-                let account =
-                    db.load_account(k).map_err(|_| BscTraceHelperError::LoadAccountFailed).unwrap();
-                if account.account_state == NotExisting {
-                    account.account_state = Touched;
-                }
-                account.info.code_hash = v.clone().unwrap().hash_slow();
-                account.info.code = v;
+                let mut info = db
+                    .basic(k)
+                    .map_err(|_| BscTraceHelperError::LoadAccountFailed)?
+                    .unwrap_or_default()
+                    .clone();
+
+                info.code_hash = v.clone().unwrap().hash_slow();
+                info.code = v;
+
+                let mut account = Account::default();
+                account.info = info;
+                account.status = AccountStatus::Touched;
+
+                changeset.insert(k, account);
             }
+
+            db.commit(changeset);
         }
 
         Ok(())
     }
 
-    pub fn add_block_reward<ExtDB: DatabaseRef>(
+    pub fn add_block_reward<DB: Database + DatabaseCommit>(
         &self,
-        db: &mut CacheDB<ExtDB>,
+        db: &mut DB,
         block_env: &BlockEnv,
     ) -> Result<(), BscTraceHelperError> {
-        let sys_acc =
-            db.load_account(SYSTEM_ADDRESS).map_err(|_| BscTraceHelperError::LoadAccountFailed)?;
-        let balance = sys_acc.info.balance;
+        let mut sys_info = db
+            .basic(SYSTEM_ADDRESS)
+            .map_err(|_| BscTraceHelperError::LoadAccountFailed)?
+            .unwrap_or_default()
+            .clone();
+        let balance = sys_info.balance;
         if balance > U256::ZERO {
-            sys_acc.info.balance = U256::ZERO;
+            let mut changeset: HashMap<_, _> = Default::default();
 
-            let val_acc = db
-                .load_account(block_env.coinbase)
-                .map_err(|_| BscTraceHelperError::LoadAccountFailed)?;
-            if val_acc.account_state == NotExisting {
-                val_acc.account_state = Touched;
-            }
-            val_acc.info.balance += balance;
+            sys_info.balance = U256::ZERO;
+
+            let mut sys_account = Account::default();
+            sys_account.info = sys_info;
+            sys_account.status = AccountStatus::Touched;
+            changeset.insert(SYSTEM_ADDRESS, sys_account);
+
+            let mut val_info = db
+                .basic(block_env.coinbase)
+                .map_err(|_| BscTraceHelperError::LoadAccountFailed)?
+                .unwrap_or_default()
+                .clone();
+
+            val_info.balance += balance;
+
+            let mut val_account = Account::default();
+            val_account.info = val_info;
+            val_account.status = AccountStatus::Touched;
+            changeset.insert(block_env.coinbase, val_account);
+
+            db.commit(changeset);
         }
 
         Ok(())

@@ -5,6 +5,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+use alloy_eips::BlockHashOrNumber;
 use alloy_primitives::{Sealable, B256};
 use alloy_rpc_types::{engine::ForkchoiceState, BlockId, RpcBlockHash};
 use reth_beacon_consensus::{
@@ -19,7 +20,7 @@ use reth_network_p2p::{
     priority::Priority,
     BlockClient,
 };
-use reth_primitives::{Block, BlockBody, BlockHashOrNumber, SealedHeader};
+use reth_primitives::{Block, BlockBody, SealedHeader};
 use reth_provider::{BlockReaderIdExt, CanonChainTracker, ParliaProvider};
 use tokio::{
     signal,

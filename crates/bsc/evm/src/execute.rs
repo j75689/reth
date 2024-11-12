@@ -3,6 +3,7 @@
 use core::fmt::Display;
 use std::{collections::HashMap, num::NonZeroUsize, sync::Arc};
 
+use alloy_consensus::Transaction as _;
 use alloy_primitives::{Address, BlockNumber, Bytes, B256, U256};
 use lazy_static::lazy_static;
 use lru::LruCache;
@@ -791,7 +792,7 @@ where
         Ok(BlockExecutionOutput {
             state: self.state.take_bundle(),
             receipts,
-            requests: Vec::default(),
+            requests: Default::default(),
             gas_used,
             snapshot,
         })
@@ -816,7 +817,7 @@ where
         Ok(BlockExecutionOutput {
             state: self.state.take_bundle(),
             receipts,
-            requests: Vec::default(),
+            requests: Default::default(),
             gas_used,
             snapshot,
         })
@@ -845,7 +846,7 @@ where
         Ok(BlockExecutionOutput {
             state: self.state.take_bundle(),
             receipts,
-            requests: Vec::default(),
+            requests: Default::default(),
             gas_used,
             snapshot,
         })

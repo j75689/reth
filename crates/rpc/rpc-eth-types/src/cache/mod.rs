@@ -7,10 +7,7 @@ use reth_chain_state::CanonStateNotification;
 use reth_errors::{ProviderError, ProviderResult};
 use reth_evm::{provider::EvmEnvProvider, ConfigureEvm};
 use reth_execution_types::Chain;
-use reth_primitives::{
-    BlobSidecars, Block, BlockWithSenders, Header, Receipt, SealedBlock,
-    SealedBlockWithSenders, TransactionSigned, TransactionSignedEcRecovered,
-};
+use reth_primitives::{BlobSidecars, Header, Receipt, SealedBlockWithSenders, TransactionSigned};
 use reth_storage_api::{BlockReader, StateProviderFactory, TransactionVariant};
 use reth_tasks::{TaskSpawner, TokioTaskExecutor};
 use revm::primitives::{BlockEnv, CfgEnv, CfgEnvWithHandlerCfg, SpecId};
@@ -593,8 +590,14 @@ enum CacheAction {
     RemoveReorgedChain {
         chain_change: ChainChange,
     },
-    GetSidecars { block_hash: B256, response_tx: SidecarsResponseSender },
-    SidecarsResult { block_hash: B256, res: ProviderResult<Option<BlobSidecars>> },
+    GetSidecars {
+        block_hash: B256,
+        response_tx: SidecarsResponseSender,
+    },
+    SidecarsResult {
+        block_hash: B256,
+        res: ProviderResult<Option<BlobSidecars>>,
+    },
 }
 
 struct BlockReceipts {

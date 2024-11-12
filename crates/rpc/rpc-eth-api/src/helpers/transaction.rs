@@ -463,7 +463,8 @@ pub trait EthTransactions: LoadTransaction<Provider: BlockReaderIdExt> {
         Self: LoadReceipt + 'static,
     {
         async move {
-            let meta = match self.provider()
+            let meta = match self
+                .provider()
                 .transaction_by_hash_with_meta(hash)
                 .map_err(Self::Error::from_eth_err)?
             {
@@ -472,11 +473,10 @@ pub trait EthTransactions: LoadTransaction<Provider: BlockReaderIdExt> {
             };
 
             // If no block sidecars found, return None
-            let sidecars =
-                match self.cache().get_sidecars(meta.block_hash).await.unwrap() {
-                    Some(sidecars) => sidecars,
-                    None => return Ok(None),
-                };
+            let sidecars = match self.cache().get_sidecars(meta.block_hash).await.unwrap() {
+                Some(sidecars) => sidecars,
+                None => return Ok(None),
+            };
 
             Ok(sidecars.iter().find(|item| item.tx_hash == hash).map(|sidecar| BlockSidecar {
                 blob_sidecar: sidecar.blob_transaction_sidecar.clone(),

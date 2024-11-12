@@ -1,11 +1,8 @@
 //! Loads a pending block from database. Helper trait for `eth_` call and trace RPC methods.
-use crate::{
-    FromEthApiError
-};
 
 use std::sync::Arc;
 
-use crate::{FromEvmError, RpcNodeCore};
+use crate::{FromEthApiError, FromEvmError, RpcNodeCore};
 use alloy_primitives::B256;
 use alloy_rpc_types::{BlockId, TransactionInfo};
 use futures::Future;
@@ -193,7 +190,8 @@ pub trait Trace: LoadState<Evm: ConfigureEvm<Header = Header>> {
             // block the transaction is included in
             let parent_block = block.parent_hash;
             let parent_beacon_block_root = block.parent_beacon_block_root;
-            let parent_timestamp = self.cache()
+            let parent_timestamp = self
+                .cache()
                 .get_sealed_block_with_senders(parent_block)
                 .await
                 .map_err(Self::Error::from_eth_err)?
@@ -239,11 +237,7 @@ pub trait Trace: LoadState<Evm: ConfigureEvm<Header = Header>> {
                     tx_env
                 };
 
-                let env = EnvWithHandlerCfg::new_with_cfg_env(
-                    cfg,
-                    block_env,
-                    tx_env,
-                );
+                let env = EnvWithHandlerCfg::new_with_cfg_env(cfg, block_env, tx_env);
                 let (res, _) =
                     this.inspect(StateCacheDbRefMutWrapper(&mut db), env, &mut inspector)?;
                 f(tx_info, inspector, res, db)

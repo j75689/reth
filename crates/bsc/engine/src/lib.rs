@@ -5,14 +5,7 @@
 // The `bsc` feature must be enabled to use this crate.
 #![cfg(feature = "bsc")]
 
-use std::{
-    clone::Clone,
-    collections::{HashMap, VecDeque},
-    fmt::Debug,
-    marker::PhantomData,
-    sync::Arc,
-};
-
+use alloy_eips::BlockHashOrNumber;
 use alloy_primitives::{BlockHash, BlockNumber, B256};
 use alloy_rpc_types::engine::{
     ExecutionPayloadEnvelopeV2, ExecutionPayloadEnvelopeV3, ExecutionPayloadEnvelopeV4,
@@ -29,8 +22,15 @@ use reth_engine_primitives::{
 };
 use reth_network_api::events::EngineMessage;
 use reth_network_p2p::BlockClient;
-use reth_primitives::{BlockBody, BlockHashOrNumber, SealedHeader};
+use reth_primitives::{BlockBody, SealedHeader};
 use reth_provider::{BlockReaderIdExt, CanonChainTracker, ParliaProvider};
+use std::{
+    clone::Clone,
+    collections::{HashMap, VecDeque},
+    fmt::Debug,
+    marker::PhantomData,
+    sync::Arc,
+};
 use tokio::sync::{
     mpsc::{UnboundedReceiver, UnboundedSender},
     Mutex, RwLockReadGuard, RwLockWriteGuard,
