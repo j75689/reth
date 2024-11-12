@@ -73,7 +73,7 @@ where
             // this should be done before return
             if is_bsc &&
                 before_system_tx &&
-                is_system_transaction(&tx, tx.signer(), block_env.coinbase)
+                is_system_transaction(&tx, *sender, block_env.coinbase)
             {
                 if let Some(trace_helper) = self.bsc_trace_helper.as_ref() {
                     // move block reward from the system address to the coinbase
@@ -96,7 +96,7 @@ where
                 break
             }
 
-            self.evm_config().fill_tx_env(evm.tx_mut(), &tx.into_signed(), sender);
+            self.evm_config().fill_tx_env(evm.tx_mut(), &tx, *sender);
 
             #[cfg(feature = "bsc")]
             if !before_system_tx {

@@ -171,12 +171,12 @@ where
         self.validate_gas_limit(registered_gas_limit, &latest_header, &block.header)?;
 
         let state_provider = self.provider.state_by_block_hash(latest_header.hash())?;
-        let executor = self.executor_provider.executor(StateProviderDatabase::new(&state_provider));
+        let executor = self.executor_provider.executor(StateProviderDatabase::new(&state_provider), None);
 
         let block = block.unseal();
         let mut accessed_blacklisted = None;
         let output = executor.execute_with_state_closure(
-            BlockExecutionInput::new(&block, U256::MAX),
+            BlockExecutionInput::new(&block, U256::MAX, None),
             |state| {
                 if !self.disallow.is_empty() {
                     for account in state.cache.accounts.keys() {
