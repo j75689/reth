@@ -239,7 +239,7 @@ where
         let parent = block.parent_hash;
         let parent_timestamp = self
             .eth_api()
-            .block(parent.into())
+            .block_with_senders(parent.into())
             .await?
             .map(|block| block.timestamp)
             .ok_or(EthApiError::UnknownParentBlock)?;
@@ -309,7 +309,7 @@ where
         let state_at = block.parent_hash;
         let parent_timestamp = self
             .eth_api()
-            .block(state_at.into())
+            .block_with_senders(state_at.into())
             .await?
             .map(|block| block.timestamp)
             .ok_or(EthApiError::UnknownParentBlock)?;
@@ -347,7 +347,7 @@ where
         let parent_beacon_block_root = block.parent_beacon_block_root;
         let parent_timestamp = self
             .eth_api()
-            .block(block.parent_hash.into())
+            .block_with_senders(block.parent_hash.into())
             .await?
             .map(|block| block.timestamp)
             .ok_or(EthApiError::UnknownParentBlock)?;
