@@ -34,6 +34,7 @@ reth-bsc-chainspec.workspace = true
 revm.workspace = true
 alloy-eips.workspace = true
 alloy-primitives.workspace = true
+alloy-consensus.workspace = true
 revm-primitives.workspace = true
 alloy-rpc-types-engine.workspace = true
 

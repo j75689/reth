@@ -32,8 +32,12 @@ impl PayloadBuilderAttributes for BscPayloadBuilderAttributes {
     /// Creates a new payload builder for the given parent block and the attributes.
     ///
     /// Derives the unique [`PayloadId`] for the given parent and attributes
-    fn try_new(parent: B256, attributes: PayloadAttributes) -> Result<Self, Infallible> {
-        Ok(Self { payload_attributes: EthPayloadBuilderAttributes::try_new(parent, attributes)? })
+    fn try_new(
+        parent: B256,
+        attributes: PayloadAttributes,
+        version: u8,
+    ) -> Result<Self, Infallible> {
+        Ok(Self { payload_attributes: EthPayloadBuilderAttributes::try_new(parent, attributes, version)? })
     }
 
     fn payload_id(&self) -> PayloadId {
@@ -127,6 +131,10 @@ impl BuiltPayload for BscBuiltPayload {
     fn executed_block(&self) -> Option<ExecutedBlock> {
         self.executed_block.clone()
     }
+
+    fn requests(&self) -> Option<Requests> {
+        self.requests.clone()
+    }
 }
 
 impl BuiltPayload for &BscBuiltPayload {
@@ -140,6 +148,10 @@ impl BuiltPayload for &BscBuiltPayload {
 
     fn executed_block(&self) -> Option<ExecutedBlock> {
         self.executed_block.clone()
+    }
+
+    fn requests(&self) -> Option<Requests> {
+        self.requests.clone()
     }
 }
 
