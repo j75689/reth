@@ -24,10 +24,8 @@ use reth_primitives::{BlockWithSenders, Receipt};
 use reth_revm::db::State;
 use revm_primitives::{
     db::{Database, DatabaseCommit},
-    BlockEnv, CfgEnvWithHandlerCfg, EnvWithHandlerCfg, EvmState, ResultAndState, U256,
+    BlockEnv, CfgEnvWithHandlerCfg, EnvWithHandlerCfg, ResultAndState, U256,
 };
-use tokio::sync::mpsc::UnboundedSender;
-use tracing::debug;
 
 /// Factory for [`EthExecutionStrategy`].
 #[derive(Debug, Clone)]
@@ -189,8 +187,8 @@ where
             // TODO: add prefetch tx
             // if let Some(tx) = tx.as_ref() {
             //     tx.send(state.clone()).unwrap_or_else(|err| {
-            //         debug!(target: "evm_executor", ?err, "Failed to send post state to prefetch channel")
-            //     });
+            //         debug!(target: "evm_executor", ?err, "Failed to send post state to prefetch
+            // channel")     });
             // }
 
             evm.db_mut().commit(state);

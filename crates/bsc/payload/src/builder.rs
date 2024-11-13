@@ -322,7 +322,7 @@ where
         db.take_bundle(),
         vec![receipts.clone()].into(),
         block_number,
-        vec![requests.clone().unwrap_or_default()],
+        vec![requests.unwrap_or_default()],
     );
     let receipts_root =
         execution_outcome.receipts_root_slow(block_number).expect("Number is in range");
@@ -396,12 +396,7 @@ where
     // seal the block
     let block = Block {
         header,
-        body: BlockBody {
-            transactions: executed_txs,
-            ommers: vec![],
-            withdrawals,
-            sidecars: None,
-        },
+        body: BlockBody { transactions: executed_txs, ommers: vec![], withdrawals, sidecars: None },
     };
 
     let sealed_block = block.seal_slow();

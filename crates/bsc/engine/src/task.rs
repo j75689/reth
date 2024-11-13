@@ -14,6 +14,7 @@ use reth_beacon_consensus::{
 use reth_bsc_consensus::Parlia;
 use reth_bsc_evm::SnapshotReader;
 use reth_chainspec::EthChainSpec;
+use reth_engine_primitives::EngineApiMessageVersion;
 use reth_network_api::events::EngineMessage;
 use reth_network_p2p::{
     headers::client::{HeadersClient, HeadersDirection, HeadersRequest},
@@ -490,6 +491,7 @@ impl<
                                     state,
                                     payload_attrs: None,
                                     tx,
+                                    version: EngineApiMessageVersion::default(),
                                 });
                                 debug!(target: "consensus::parlia", ?state, "Sent fork choice update");
 

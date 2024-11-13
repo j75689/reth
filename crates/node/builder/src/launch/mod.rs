@@ -25,6 +25,8 @@ use reth_consensus_debug_client::{DebugConsensusClient, EtherscanBlockProvider, 
 use reth_engine_util::EngineMessageStreamExt;
 use reth_exex::ExExManagerHandle;
 use reth_network::{BlockDownloaderProvider, NetworkEventListenerProvider};
+#[cfg(feature = "bsc")]
+use reth_network_api::EngineRxProvider;
 use reth_node_api::{AddOnsContext, FullNodeTypes, NodeTypesWithDB, NodeTypesWithEngine};
 use reth_node_core::{
     dirs::{ChainPath, DataDirPath},
@@ -274,7 +276,7 @@ where
             )?;
             #[cfg(feature = "bsc")]
             {
-                let engine_rx = ctx.node_adapter().components.network().get_to_engine_rx();
+                let engine_rx = ctx.components().network().get_to_engine_rx();
                 let client = ParliaEngineBuilder::new(
                     ctx.chain_spec(),
                     ctx.blockchain_db().clone(),
