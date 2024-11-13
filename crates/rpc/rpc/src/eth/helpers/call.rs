@@ -3,7 +3,7 @@
 use crate::EthApi;
 use alloy_primitives::{Address, B256};
 use reth_bsc_primitives::system_contracts::is_system_transaction;
-use reth_evm::{ConfigureEvm, ConfigureEvmEnv};
+use reth_evm::ConfigureEvm;
 use reth_primitives::{Header, TransactionSigned};
 use reth_rpc_eth_api::{
     helpers::{Call, EthCall, LoadPendingBlock, LoadState, SpawnBlocking},

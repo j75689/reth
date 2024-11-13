@@ -775,14 +775,13 @@ impl<N: ProviderNodeTypes> BlockIdReader for ConsistentProvider<N> {
     }
 }
 
-// TODO: fix this
 impl<N: ProviderNodeTypes> SidecarsProvider for ConsistentProvider<N> {
     fn sidecars(&self, block_hash: &BlockHash) -> ProviderResult<Option<BlobSidecars>> {
-        todo!()
+        self.storage_provider.sidecars(block_hash)
     }
 
     fn sidecars_by_number(&self, num: BlockNumber) -> ProviderResult<Option<BlobSidecars>> {
-        todo!()
+        self.storage_provider.sidecars_by_number(num)
     }
 }
 

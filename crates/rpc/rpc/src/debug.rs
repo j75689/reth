@@ -23,8 +23,8 @@ use reth_evm::{
 };
 use reth_primitives::{Block, TransactionSignedEcRecovered};
 use reth_provider::{
-    BlockReader, BlockReaderIdExt, ChainSpecProvider, HeaderProvider, StateProofProvider,
-    StateProviderFactory, TransactionVariant,
+    BlockReaderIdExt, ChainSpecProvider, HeaderProvider, StateProofProvider, StateProviderFactory,
+    TransactionVariant,
 };
 use reth_revm::database::StateProviderDatabase;
 use reth_rpc_api::DebugApiServer;

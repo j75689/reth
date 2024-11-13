@@ -4,7 +4,7 @@ use alloy_primitives::U256;
 use parking_lot::RwLock;
 use reth_chainspec::ChainSpec;
 use reth_optimism_evm::RethL1BlockInfo;
-use reth_optimism_forks::OptimismHardforks;
+use reth_optimism_forks::OptimismHardfork;
 use reth_primitives::{Block, GotExpected, InvalidTransactionError, SealedBlock};
 use reth_provider::{BlockReaderIdExt, StateProviderFactory};
 use reth_revm::L1BlockInfo;
@@ -146,7 +146,7 @@ where
 
             let cost_addition = if self
                 .chain_spec()
-                .is_wright_active_at_timestamp(self.block_timestamp()) &&
+                .is_fork_active_at_timestamp(OptimismHardfork::Wright, self.block_timestamp()) &&
                 valid_tx.transaction().priority_fee_or_price() == 0
             {
                 U256::from(0)

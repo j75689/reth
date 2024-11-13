@@ -4,7 +4,7 @@ use crate::{l1::ensure_create2_deployer, OpEvmConfig, OptimismBlockExecutionErro
 use alloc::{boxed::Box, sync::Arc, vec::Vec};
 use alloy_consensus::Transaction as _;
 use alloy_eips::eip7685::Requests;
-use alloy_primitives::{Address, BlockNumber};
+use alloy_primitives::Address;
 use op_alloy_consensus::DepositTransaction;
 use reth_chainspec::EthereumHardforks;
 use reth_consensus::ConsensusError;

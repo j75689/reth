@@ -76,6 +76,9 @@ where
         from_engine: EngineMessageStream<N::Engine>,
         mode: MiningMode,
         payload_attributes_builder: B,
+        skip_state_root_validation: bool,
+        enable_prefetch: bool,
+        enable_execution_cache: bool,
     ) -> Self
     where
         B: PayloadAttributesBuilder<<N::Engine as PayloadTypes>::PayloadAttributes>,
@@ -101,9 +104,9 @@ where
             tree_config,
             invalid_block_hook,
             engine_kind,
-            false, // TODO: confirm these params
-            false,
-            false,
+            skip_state_root_validation,
+            enable_prefetch,
+            enable_execution_cache,
         );
 
         let handler = EngineApiRequestHandler::new(to_tree_tx, from_tree);

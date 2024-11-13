@@ -236,6 +236,9 @@ where
                 Box::pin(consensus_engine_stream),
                 mining_mode,
                 LocalPayloadAttributesBuilder::new(ctx.chain_spec()),
+                ctx.node_config().skip_state_root_validation,
+                ctx.node_config().enable_prefetch,
+                ctx.node_config().enable_execution_cache,
             );
 
             Either::Left(eth_service)
