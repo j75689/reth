@@ -601,8 +601,8 @@ impl<Provider, Pool, Network, Tasks, Events, EvmConfig, BlockExecutor, Consensus
     /// Configure the consensus implementation.
     pub fn with_consensus<C>(
         self,
-        consensus: Consensus,
-    ) -> RpcModuleBuilder<Provider, Pool, Network, Tasks, Events, EvmConfig, BlockExecutor, Consensus> {
+        consensus: C,
+    ) -> RpcModuleBuilder<Provider, Pool, Network, Tasks, Events, EvmConfig, BlockExecutor, C> {
         let Self { provider, network, pool, executor, events, evm_config, block_executor, bsc_trace_helper, .. } =
             self;
         RpcModuleBuilder {
@@ -619,7 +619,7 @@ impl<Provider, Pool, Network, Tasks, Events, EvmConfig, BlockExecutor, Consensus
     }
 
     /// Configure the bsc_trace_helper implementation.
-    pub fn with_bsc_trace_helper<C>(
+    pub fn with_bsc_trace_helper(
         self,
         bsc_trace_helper: Option<BscTraceHelper>
     ) -> RpcModuleBuilder<Provider, Pool, Network, Tasks, Events, EvmConfig, BlockExecutor, Consensus> {
