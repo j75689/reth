@@ -23,9 +23,11 @@ use reth_optimism_forks::OptimismHardfork;
 use reth_primitives::{BlockWithSenders, Header, Receipt, TxType};
 use reth_revm::{db::states::StorageSlot, Database, State};
 use revm_primitives::{
-    db::DatabaseCommit, BlockEnv, CfgEnvWithHandlerCfg, EnvWithHandlerCfg, ResultAndState, U256,
+    db::DatabaseCommit, BlockEnv, CfgEnvWithHandlerCfg, EnvWithHandlerCfg, EvmState,
+    ResultAndState, U256,
 };
 use std::{collections::HashMap, fmt::Display, str::FromStr};
+use tokio::sync::mpsc::UnboundedSender;
 use tracing::trace;
 
 /// Factory for [`OpExecutionStrategy`].
@@ -154,6 +156,7 @@ where
         &mut self,
         block: &BlockWithSenders,
         total_difficulty: U256,
+        _prefetch_rx: Option<UnboundedSender<EvmState>>,
     ) -> Result<ExecuteOutput, Self::Error> {
         let env = self.evm_env_for_block(&block.header, total_difficulty);
         let mut evm = self.evm_config.evm_with_env(&mut self.state, env);
