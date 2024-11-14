@@ -723,11 +723,11 @@ impl<Provider, Pool, Network, Tasks, Events, EvmConfig, BlockExecutor, Consensus
         }
     }
 
-    /// Configure the `bsc_trace_helper`` implementation.
+    /// Configure the `bsc_trace_helper` implementation.
     pub fn with_bsc_trace_helper(
         self,
         bsc_trace_helper: Option<BscTraceHelper>,
-    ) -> RpcModuleBuilder<Provider, Pool, Network, Tasks, Events, EvmConfig, BlockExecutor, Consensus>
+    ) -> Self<Provider, Pool, Network, Tasks, Events, EvmConfig, BlockExecutor, Consensus>
     {
         let Self {
             provider,
@@ -740,7 +740,7 @@ impl<Provider, Pool, Network, Tasks, Events, EvmConfig, BlockExecutor, Consensus
             consensus,
             ..
         } = self;
-        RpcModuleBuilder {
+        Self {
             provider,
             network,
             pool,
