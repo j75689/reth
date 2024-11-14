@@ -114,12 +114,7 @@ impl ConfigureEvmEnv for BscEvmConfig {
         let blob_excess_gas_and_price = parent
             .next_block_excess_blob_gas()
             .or_else(|| {
-                if spec_id == SpecId::CANCUN {
-                    // default excess blob gas is zero
-                    Some(0)
-                } else {
-                    None
-                }
+                (spec_id == SpecId::CANCUN).then(|| 0)
             })
             .map(BlobExcessGasAndPrice::new);
 
