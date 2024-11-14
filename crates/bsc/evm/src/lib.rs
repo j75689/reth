@@ -113,9 +113,7 @@ impl ConfigureEvmEnv for BscEvmConfig {
         // cancun now, we need to set the excess blob gas to the default value
         let blob_excess_gas_and_price = parent
             .next_block_excess_blob_gas()
-            .or_else(|| {
-                (spec_id == SpecId::CANCUN).then_some(0)
-            })
+            .or_else(|| (spec_id == SpecId::CANCUN).then_some(0))
             .map(BlobExcessGasAndPrice::new);
 
         let mut basefee = parent.next_block_base_fee(

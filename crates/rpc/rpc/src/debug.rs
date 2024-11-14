@@ -95,6 +95,7 @@ where
     }
 
     /// Trace the entire block asynchronously
+    #[allow(clippy::too_many_arguments)]
     async fn trace_block(
         &self,
         at: BlockId,
