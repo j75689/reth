@@ -114,11 +114,7 @@ impl Decodable for BlobSidecar {
         let _rlp_head_tx_sidecar = alloy_rlp::Header::decode(buf)?;
 
         let this = Self {
-            blob_transaction_sidecar: BlobTransactionSidecar {
-                blobs: Decodable::decode(buf)?,
-                commitments: Decodable::decode(buf)?,
-                proofs: Decodable::decode(buf)?,
-            },
+            blob_transaction_sidecar: Decodable::decode(buf)?,
             block_number: Decodable::decode(buf)?,
             block_hash: Decodable::decode(buf)?,
             tx_index: Decodable::decode(buf)?,
