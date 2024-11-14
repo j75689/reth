@@ -163,6 +163,7 @@ mod tests {
     use reth_primitives::SealedHeader;
     use reth_provider::{
         providers::BlockchainProvider2, test_utils::create_test_provider_factory_with_chain_spec,
+        StaticFileProviderFactory,
     };
     use reth_prune::Pruner;
     use reth_tasks::TokioTaskExecutor;

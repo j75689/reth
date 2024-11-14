@@ -892,8 +892,13 @@ mod tests {
 
         // Create a ExecutionOutcome object with the created bundle, receipts, requests, and
         // first_block
-        let mut exec_res =
-            ExecutionOutcome { bundle: Default::default(), receipts, requests, first_block, snapshots: vec![] };
+        let mut exec_res = ExecutionOutcome {
+            bundle: Default::default(),
+            receipts,
+            requests,
+            first_block,
+            snapshots: vec![],
+        };
 
         // Assert that the revert_to method returns true when reverting to the initial block number.
         assert!(exec_res.revert_to(123));
@@ -938,8 +943,13 @@ mod tests {
         let first_block = 123;
 
         // Create an ExecutionOutcome object.
-        let mut exec_res =
-            ExecutionOutcome { bundle: Default::default(), receipts, requests, first_block, snapshots: vec![] };
+        let mut exec_res = ExecutionOutcome {
+            bundle: Default::default(),
+            receipts,
+            requests,
+            first_block,
+            snapshots: vec![],
+        };
 
         // Extend the ExecutionOutcome object by itself.
         exec_res.extend(exec_res.clone());
@@ -995,8 +1005,13 @@ mod tests {
 
         // Create a ExecutionOutcome object with the created bundle, receipts, requests, and
         // first_block
-        let exec_res =
-            ExecutionOutcome { bundle: Default::default(), receipts, requests, first_block, snapshots: vec![] };
+        let exec_res = ExecutionOutcome {
+            bundle: Default::default(),
+            receipts,
+            requests,
+            first_block,
+            snapshots: vec![],
+        };
 
         // Split the ExecutionOutcome at block number 124
         let result = exec_res.clone().split_at(124);
