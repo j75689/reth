@@ -20,6 +20,8 @@ alloy-consensus.workspace = true
 
 eyre.workspace = true
 
+tokio = { workspace = true, features = ["sync", "time"] }
+
 [features]
 optimism = [
   "reth-primitives/optimism"

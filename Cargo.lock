@@ -3248,6 +3248,7 @@ dependencies = [
  "reth-evm-ethereum",
  "reth-node-ethereum",
  "reth-primitives",
+ "tokio",
 ]
 
 [[package]]

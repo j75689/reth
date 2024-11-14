@@ -15,7 +15,7 @@ use reth::{
     providers::ProviderError,
     revm::{
         interpreter::Host,
-        primitives::{Env, TransactTo, TxEnv},
+        primitives::{Env, EvmState, TransactTo, TxEnv},
         Database, DatabaseCommit, Evm, State,
     },
 };
@@ -33,6 +33,7 @@ use reth_primitives::{
     BlockWithSenders, Receipt,
 };
 use std::{fmt::Display, sync::Arc};
+use tokio::sync::mpsc::UnboundedSender;
 
 pub const SYSTEM_ADDRESS: Address = address!("fffffffffffffffffffffffffffffffffffffffe");
 pub const WITHDRAWALS_ADDRESS: Address = address!("4200000000000000000000000000000000000000");
@@ -277,6 +278,8 @@ fn fill_tx_env_with_system_contract_call(
         authorization_list: None,
         #[cfg(feature = "optimism")]
         optimism: OptimismFields::default(),
+        #[cfg(feature = "bsc")]
+        bsc: Default::default(),
     };
 
     // ensure the block gas limit is >= the tx
