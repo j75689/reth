@@ -83,8 +83,12 @@ mod tests {
 
     #[test]
     fn test_highest_static_files_highest() {
-        let files =
-            HighestStaticFiles { headers: Some(100), receipts: Some(200), transactions: None };
+        let files = HighestStaticFiles {
+            headers: Some(100),
+            receipts: Some(200),
+            transactions: None,
+            sidecars: None,
+        };
 
         // Test for headers segment
         assert_eq!(files.highest(StaticFileSegment::Headers), Some(100));
@@ -115,8 +119,12 @@ mod tests {
 
     #[test]
     fn test_highest_static_files_min() {
-        let files =
-            HighestStaticFiles { headers: Some(300), receipts: Some(100), transactions: None };
+        let files = HighestStaticFiles {
+            headers: Some(300),
+            receipts: Some(100),
+            transactions: None,
+            sidecars: None,
+        };
 
         // Minimum value among the available segments
         assert_eq!(files.min(), Some(100));
@@ -128,8 +136,12 @@ mod tests {
 
     #[test]
     fn test_highest_static_files_max() {
-        let files =
-            HighestStaticFiles { headers: Some(300), receipts: Some(100), transactions: Some(500) };
+        let files = HighestStaticFiles {
+            headers: Some(300),
+            receipts: Some(100),
+            transactions: Some(500),
+            sidecars: None,
+        };
 
         // Maximum value among the available segments
         assert_eq!(files.max(), Some(500));
