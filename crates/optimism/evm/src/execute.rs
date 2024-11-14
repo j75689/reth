@@ -436,7 +436,7 @@ mod tests {
         );
 
         let provider = executor_provider(chain_spec);
-        let mut executor = provider.batch_executor(StateProviderDatabase::new(&db));
+        let mut executor = provider.batch_executor(StateProviderDatabase::new(&db), None);
 
         // make sure the L1 block contract state is preloaded.
         executor.with_state_mut(|state| {
@@ -521,7 +521,7 @@ mod tests {
         );
 
         let provider = executor_provider(chain_spec);
-        let mut executor = provider.batch_executor(StateProviderDatabase::new(&db));
+        let mut executor = provider.batch_executor(StateProviderDatabase::new(&db), None);
 
         // make sure the L1 block contract state is preloaded.
         executor.with_state_mut(|state| {

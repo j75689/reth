@@ -445,6 +445,7 @@ mod tests {
                         senders: vec![],
                     },
                     U256::ZERO,
+                    None,
                 )
                     .into(),
             )
