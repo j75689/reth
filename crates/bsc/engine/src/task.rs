@@ -423,21 +423,20 @@ impl<
                 }
                 for header in disconnected_headers {
                     storage.insert_new_header(header.clone());
-                    let result =
-                        fork_choice_tx.send(ForkChoiceMessage::NewHeader(NewHeaderEvent {
-                            header: header.clone(),
-                            // if the pipeline sync is true, the fork choice will not use the safe
-                            // and finalized hash.
-                            // this can make Block Sync Engine to use pipeline sync mode.
-                            pipeline_sync,
-                            local_header: latest_unsafe_header.clone(),
-                        }));
-                    if result.is_err() {
-                        error!(target: "consensus::parlia", "Failed to send new block event to
-                    fork choice");
-                    }
                 }
                 drop(storage);
+                let result = fork_choice_tx.send(ForkChoiceMessage::NewHeader(NewHeaderEvent {
+                    header: sealed_header.clone(),
+                    // if the pipeline sync is true, the fork choice will not use the safe
+                    // and finalized hash.
+                    // this can make Block Sync Engine to use pipeline sync mode.
+                    pipeline_sync,
+                    local_header: latest_unsafe_header.clone(),
+                }));
+                if result.is_err() {
+                    error!(target: "consensus::parlia", "Failed to send new block event to
+                fork choice");
+                }
 
                 let result = chain_tracker_tx.send(ForkChoiceMessage::NewHeader(NewHeaderEvent {
                     header: sealed_header.clone(),
