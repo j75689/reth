@@ -55,9 +55,8 @@ impl BscTraceHelper {
                 info.code_hash = v.clone().unwrap().hash_slow();
                 info.code = v;
 
-                let mut account = Account::default();
-                account.info = info;
-                account.status = AccountStatus::Touched;
+                let account =
+                    Account { info, status: AccountStatus::Touched, ..Default::default() };
 
                 changeset.insert(k, account);
             }
@@ -76,30 +75,26 @@ impl BscTraceHelper {
         let mut sys_info = db
             .basic(SYSTEM_ADDRESS)
             .map_err(|_| BscTraceHelperError::LoadAccountFailed)?
-            .unwrap_or_default()
-            .clone();
+            .unwrap_or_default();
         let balance = sys_info.balance;
         if balance > U256::ZERO {
             let mut changeset: HashMap<_, _> = Default::default();
 
             sys_info.balance = U256::ZERO;
 
-            let mut sys_account = Account::default();
-            sys_account.info = sys_info;
-            sys_account.status = AccountStatus::Touched;
+            let sys_account =
+                Account { info: sys_info, status: AccountStatus::Touched, ..Default::default() };
             changeset.insert(SYSTEM_ADDRESS, sys_account);
 
             let mut val_info = db
                 .basic(block_env.coinbase)
                 .map_err(|_| BscTraceHelperError::LoadAccountFailed)?
-                .unwrap_or_default()
-                .clone();
+                .unwrap_or_default();
 
             val_info.balance += balance;
 
-            let mut val_account = Account::default();
-            val_account.info = val_info;
-            val_account.status = AccountStatus::Touched;
+            let val_account =
+                Account { info: val_info, status: AccountStatus::Touched, ..Default::default() };
             changeset.insert(block_env.coinbase, val_account);
 
             db.commit(changeset);
