@@ -84,7 +84,5 @@ pub mod serde_bincode_compat {
 }
 
 // to make lint happy
-#[cfg(feature = "bsc")]
-use reth_chainspec as _;
 #[cfg(any(feature = "bsc", feature = "opbnb"))]
 use revm as _;
