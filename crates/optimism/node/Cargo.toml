@@ -83,7 +83,8 @@ optimism = [
 	"reth-optimism-rpc/optimism",
 	"reth-engine-local/optimism",
 	"reth-optimism-consensus/optimism",
-	"reth-db/optimism"
+	"reth-db/optimism",
+	"reth-chainspec/optimism"
 ]
 asm-keccak = [
 	"reth-primitives/asm-keccak",

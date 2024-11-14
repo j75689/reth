@@ -94,7 +94,8 @@ optimism = [
 	"reth-codecs/optimism",
 	"reth-db/optimism",
 	"reth-db-api/optimism",
-	"revm/optimism"
+	"revm/optimism",
+	"reth-chainspec/optimism"
 ]
 serde = [
 	"reth-execution-types/serde",

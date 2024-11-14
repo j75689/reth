@@ -41,4 +41,10 @@ op-alloy-rpc-types.workspace = true
 
 [features]
 default = ["std"]
-std = []
+std = [
+	"alloy-consensus/std",
+	"alloy-genesis/std",
+	"alloy-primitives/std",
+	"once_cell/std",
+	"reth-primitives-traits/std"
+]

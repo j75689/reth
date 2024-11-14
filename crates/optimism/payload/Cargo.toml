@@ -50,12 +50,13 @@ sha2.workspace = true
 
 [features]
 optimism = [
-    "reth-primitives/optimism",
-    "reth-provider/optimism",
-    "reth-optimism-evm/optimism",
-    "revm/optimism",
-    "reth-execution-types/optimism",
-    "reth-optimism-consensus/optimism"
+	"reth-primitives/optimism",
+	"reth-provider/optimism",
+	"reth-optimism-evm/optimism",
+	"revm/optimism",
+	"reth-execution-types/optimism",
+	"reth-optimism-consensus/optimism",
+	"reth-chainspec/optimism"
 ]
 opbnb = [
     "reth-primitives/opbnb",

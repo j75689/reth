@@ -53,5 +53,6 @@ optimism = [
 	"reth-execution-types/optimism",
 	"reth-optimism-consensus?/optimism",
 	"reth-primitives/optimism",
-	"revm-primitives/optimism"
+	"revm-primitives/optimism",
+	"reth-chainspec/optimism"
 ]

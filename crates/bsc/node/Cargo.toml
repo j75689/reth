@@ -63,4 +63,8 @@ bsc = [
     "reth-bsc-payload-builder/bsc",
     "reth-bsc-engine/bsc",
 ]
-asm-keccak = ["reth-primitives/asm-keccak"]
+asm-keccak = [
+	"reth-primitives/asm-keccak",
+	"reth/asm-keccak",
+	"reth-node-core/asm-keccak"
+]

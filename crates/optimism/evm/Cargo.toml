@@ -70,7 +70,8 @@ optimism = [
 	"reth-execution-types/optimism",
 	"reth-optimism-consensus/optimism",
 	"revm/optimism",
-	"revm-primitives/optimism"
+	"revm-primitives/optimism",
+	"reth-chainspec/optimism"
 ]
 opbnb = [
     "reth-primitives/opbnb",

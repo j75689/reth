@@ -24,7 +24,8 @@ tokio = { workspace = true, features = ["sync", "time"] }
 
 [features]
 optimism = [
-  "reth-primitives/optimism"
+	"reth-primitives/optimism",
+	"reth-chainspec/optimism"
 ]
 bsc = [
   "reth-primitives/bsc"

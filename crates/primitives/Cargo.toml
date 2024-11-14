@@ -101,9 +101,14 @@ std = [
 	"revm-primitives/std",
 	"secp256k1?/std",
 	"serde/std",
+	"revm?/std"
 ]
 reth-codec = ["dep:reth-codecs", "dep:zstd", "dep:modular-bitfield", "std"]
-asm-keccak = ["alloy-primitives/asm-keccak", "revm-primitives/asm-keccak"]
+asm-keccak = [
+	"alloy-primitives/asm-keccak",
+	"revm-primitives/asm-keccak",
+	"revm?/asm-keccak"
+]
 arbitrary = [
 	"dep:arbitrary",
 	"alloy-eips/arbitrary",
@@ -121,7 +126,8 @@ arbitrary = [
 	"alloy-serde?/arbitrary",
 	"op-alloy-consensus?/arbitrary",
 	"op-alloy-rpc-types?/arbitrary",
-	"reth-codecs?/arbitrary"
+	"reth-codecs?/arbitrary",
+	"revm?/arbitrary"
 ]
 secp256k1 = ["dep:secp256k1"]
 c-kzg = [
@@ -134,6 +140,8 @@ optimism = [
 	"dep:op-alloy-consensus",
 	"reth-codecs?/optimism",
 	"revm-primitives/optimism",
+	"reth-chainspec/optimism",
+	"revm?/optimism"
 ]
 opbnb = [
     "revm/opbnb",
@@ -153,6 +161,7 @@ test-utils = [
 	"reth-chainspec/test-utils",
 	"reth-codecs?/test-utils",
 	"reth-trie-common/test-utils",
+	"revm?/test-utils"
 ]
 serde-bincode-compat = [
 	"alloy-consensus/serde-bincode-compat",
