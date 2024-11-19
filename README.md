@@ -12,8 +12,9 @@
 
 [discord-url]: https://discord.gg/z2VpC455eU
 
-BNB Chain Reth is a blockchain client based on [Reth](https://github.com/paradigmxyz/reth/), designed to provide seamless
-support for [BNB Smart Chain(BSC)](https://github.com/bnb-chain/bsc) and [opBNB](https://github.com/bnb-chain/op-geth).
+BNB Chain Reth is a blockchain client based on [Reth](https://github.com/paradigmxyz/reth/), designed to provide
+seamless support for [BNB Smart Chain(BSC)](https://github.com/bnb-chain/bsc)
+and [opBNB](https://github.com/bnb-chain/op-geth).
 
 ## Build from Source
 
@@ -76,7 +77,9 @@ export network=bsc
     --chain=${network} \
     --http \
     --http.api="eth, net, txpool, web3, rpc" \
-    --log.file.directory ./datadir/logs
+    --log.file.directory ./datadir/logs \
+    --enable-prefetch \
+    --optimize.enable-execution-cache
 ```
 
 You can run `bsc-reth --help` for command explanations.
@@ -102,7 +105,9 @@ docker run -d -p 8545:8545 -p 30303:30303 -p 30303:30303/udp -v ${data_dir}:/dat
     --chain=${network} \
     --http \
     --http.api="eth, net, txpool, web3, rpc" \
-    --log.file.directory /data/logs
+    --log.file.directory /data/logs \
+    --enable-prefetch \
+    --optimize.enable-execution-cache
 ```
 
 ### Snapshots
@@ -200,7 +205,9 @@ export L2_RPC=https://opbnb-mainnet-rpc.bnbchain.org
     --authrpc.jwtsecret=./jwt.txt \
     --http \
     --http.api="eth, net, txpool, web3, rpc" \
-    --log.file.directory ./datadir/logs
+    --log.file.directory ./datadir/logs \
+    --enable-prefetch \
+    --optimize.enable-execution-cache
 ```
 
 You can run `op-reth --help` for command explanations. More details on running opbnb nodes can be
@@ -236,7 +243,9 @@ docker run -d -p 8545:8545 -p 30303:30303 -p 30303:30303/udp -v ${data_dir}:/dat
     --authrpc.jwtsecret=/jwt/jwt.txt \
     --http \
     --http.api="eth, net, txpool, web3, rpc" \
-    --log.file.directory /data/logs
+    --log.file.directory /data/logs \
+    --enable-prefetch \
+    --optimize.enable-execution-cache
 ```
 
 ## Contribution

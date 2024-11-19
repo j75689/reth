@@ -39,7 +39,7 @@ pub struct RollupArgs {
     pub discovery_v4: bool,
 
     /// Enable the engine2 experimental features on op-reth binary
-    #[arg(long = "engine.experimental", default_value = "false")]
+    #[arg(long = "engine.experimental", default_value = "true")]
     pub experimental: bool,
 
     /// Configure persistence threshold for engine experimental.
@@ -59,7 +59,7 @@ impl Default for RollupArgs {
             enable_genesis_walkback: false,
             compute_pending_block: false,
             discovery_v4: false,
-            experimental: false,
+            experimental: true,
             persistence_threshold: DEFAULT_PERSISTENCE_THRESHOLD,
             memory_block_buffer_target: DEFAULT_MEMORY_BLOCK_BUFFER_TARGET,
         }
