@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.0.7
+
+This is a hotfix release for the BSC/opBNB mainnet and testnet.
+
+### Features
+
+- [#167](https://github.com/bnb-chain/reth/pull/167): feat: add missing leaves cache
+
+### Bug Fixes
+
+- [#183](https://github.com/bnb-chain/reth/pull/183): fix: bsc panic in fullnode mode
+- [#184](https://github.com/bnb-chain/reth/pull/184): fix: the gas price checking issue of opBNB
+- [#200](https://github.com/bnb-chain/reth/pull/200): fix: branch node children decoding
+
 ## v1.0.6
 
 This release merges with upstream version v1.1.0, making the new engine as the default. It includes new features and
