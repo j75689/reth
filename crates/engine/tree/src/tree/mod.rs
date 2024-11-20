@@ -3208,10 +3208,10 @@ mod tests {
         let blocks: Vec<_> = test_block_builder
             .get_executed_blocks(1..tree_config.persistence_threshold() + 2)
             .collect();
-        let test_harness = TestHarness::new(chain_spec).with_blocks(blocks.clone());
+        let mut test_harness = TestHarness::new(chain_spec).with_blocks(blocks.clone());
         std::thread::Builder::new()
             .name("Tree Task".to_string())
-            .spawn(|| test_harness.tree.run())
+            .spawn(move || test_harness.tree.run())
             .unwrap();
 
         // send a message to the tree to enter the main loop.
