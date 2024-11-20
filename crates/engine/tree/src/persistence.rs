@@ -208,6 +208,7 @@ where
             UnifiedStorageWriter::commit(provider_rw, static_file_provider)?;
         }
         self.metrics.save_blocks_duration_seconds.record(start_time.elapsed());
+        self.metrics.persistence_height.set(last_block_hash_num.as_ref().map(|b| b.number).unwrap_or(0) as f64);
         Ok(last_block_hash_num)
     }
 
