@@ -3,6 +3,7 @@ use crate::{
     chain::FromOrchestrator,
     engine::{DownloadRequest, EngineApiEvent, FromEngine},
     persistence::PersistenceHandle,
+    tree::persistence_state::PersistenceReceiver,
 };
 use alloy_eips::BlockNumHash;
 use alloy_primitives::{
@@ -638,7 +639,6 @@ where
         let persistence_state = PersistenceState {
             last_persisted_block: BlockNumHash::new(best_block_number, header.hash()),
             rx: None,
-            rx_with_root_updates: None,
             remove_above_state: VecDeque::new(),
         };
 
@@ -1207,70 +1207,73 @@ where
         }
 
         if self.persistence_state.in_progress() {
-            if self.skip_state_root_validation || !self.compute_state_root_in_background {
-                let (mut rx, start_time) = self
-                    .persistence_state
-                    .rx
-                    .take()
-                    .expect("if a persistence task is in progress Receiver must be Some");
-                // Check if persistence has complete
-                match rx.try_recv() {
-                    Ok(last_persisted_hash_num) => {
-                        self.metrics.engine.persistence_duration.record(start_time.elapsed());
-                        let Some(BlockNumHash {
-                            hash: last_persisted_block_hash,
-                            number: last_persisted_block_number,
-                        }) = last_persisted_hash_num
-                        else {
-                            // if this happened, then we persisted no blocks because we sent an
-                            // empty vec of blocks
-                            warn!(target: "engine::tree", "Persistence task completed but did not persist any blocks");
-                            return Ok(())
-                        };
+            let (rx, start_time) = self
+                .persistence_state
+                .rx
+                .take()
+                .expect("if a persistence task is in progress Receiver must be Some");
 
-                        debug!(target: "engine::tree", ?last_persisted_block_hash, ?last_persisted_block_number, "Finished persisting, calling finish");
-                        self.persistence_state
-                            .finish(last_persisted_block_hash, last_persisted_block_number);
-                        self.on_new_persisted_block()?;
+            match rx {
+                PersistenceReceiver::Simple(mut rx) => {
+                    // Check if persistence has complete
+                    match rx.try_recv() {
+                        Ok(last_persisted_hash_num) => {
+                            self.metrics.engine.persistence_duration.record(start_time.elapsed());
+                            let Some(BlockNumHash {
+                                hash: last_persisted_block_hash,
+                                number: last_persisted_block_number,
+                            }) = last_persisted_hash_num
+                            else {
+                                // if this happened, then we persisted no blocks because we sent an
+                                // empty vec of blocks
+                                warn!(target: "engine::tree", "Persistence task completed but did not persist any blocks");
+                                return Ok(())
+                            };
+
+                            debug!(target: "engine::tree", ?last_persisted_block_hash, ?last_persisted_block_number, "Finished persisting, calling finish");
+                            self.persistence_state
+                                .finish(last_persisted_block_hash, last_persisted_block_number);
+                            self.on_new_persisted_block()?;
+                        }
+                        Err(TryRecvError::Closed) => return Err(TryRecvError::Closed.into()),
+                        Err(TryRecvError::Empty) => {
+                            self.persistence_state.rx =
+                                Some((PersistenceReceiver::Simple(rx), start_time))
+                        }
                     }
-                    Err(TryRecvError::Closed) => return Err(TryRecvError::Closed.into()),
-                    Err(TryRecvError::Empty) => self.persistence_state.rx = Some((rx, start_time)),
                 }
-            } else {
-                let (mut rx, start_time) = self
-                    .persistence_state
-                    .rx_with_root_updates
-                    .take()
-                    .expect("if a persistence task is in progress Receiver must be Some");
-                // Check if persistence has complete
-                match rx.try_recv() {
-                    Ok(persistence_result) => {
-                        let elapsed = start_time.elapsed();
-                        let (last_persisted_hash_num, root_updates) = persistence_result;
-                        self.metrics
-                            .block_validation
-                            .record_state_root(&root_updates, elapsed.as_secs_f64());
+                PersistenceReceiver::WithRootUpdates(mut rx) => {
+                    // Check if persistence has complete
+                    match rx.try_recv() {
+                        Ok(persistence_result) => {
+                            let elapsed = start_time.elapsed();
+                            let (last_persisted_hash_num, root_updates) = persistence_result;
+                            self.metrics
+                                .block_validation
+                                .record_state_root(&root_updates, elapsed.as_secs_f64());
 
-                        self.metrics.engine.persistence_duration.record(elapsed);
-                        let Some(BlockNumHash {
-                            hash: last_persisted_block_hash,
-                            number: last_persisted_block_number,
-                        }) = last_persisted_hash_num
-                        else {
-                            // if this happened, then we persisted no blocks because we sent an
-                            // empty vec of blocks
-                            warn!(target: "engine::tree", "Persistence task completed but did not persist any blocks");
-                            return Ok(())
-                        };
+                            self.metrics.engine.persistence_duration.record(elapsed);
+                            let Some(BlockNumHash {
+                                hash: last_persisted_block_hash,
+                                number: last_persisted_block_number,
+                            }) = last_persisted_hash_num
+                            else {
+                                // if this happened, then we persisted no blocks because we sent an
+                                // empty vec of blocks
+                                warn!(target: "engine::tree", "Persistence task completed but did not persist any blocks");
+                                return Ok(())
+                            };
 
-                        trace!(target: "engine::tree", ?last_persisted_block_hash, ?last_persisted_block_number, "Finished persisting, calling finish");
-                        self.persistence_state
-                            .finish(last_persisted_block_hash, last_persisted_block_number);
-                        self.on_new_persisted_block()?;
-                    }
-                    Err(TryRecvError::Closed) => return Err(TryRecvError::Closed.into()),
-                    Err(TryRecvError::Empty) => {
-                        self.persistence_state.rx_with_root_updates = Some((rx, start_time))
+                            trace!(target: "engine::tree", ?last_persisted_block_hash, ?last_persisted_block_number, "Finished persisting, calling finish");
+                            self.persistence_state
+                                .finish(last_persisted_block_hash, last_persisted_block_number);
+                            self.on_new_persisted_block()?;
+                        }
+                        Err(TryRecvError::Closed) => return Err(TryRecvError::Closed.into()),
+                        Err(TryRecvError::Empty) => {
+                            self.persistence_state.rx =
+                                Some((PersistenceReceiver::WithRootUpdates(rx), start_time))
+                        }
                     }
                 }
             }
