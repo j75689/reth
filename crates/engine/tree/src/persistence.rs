@@ -208,7 +208,9 @@ where
             UnifiedStorageWriter::commit(provider_rw, static_file_provider)?;
         }
         self.metrics.save_blocks_duration_seconds.record(start_time.elapsed());
-        self.metrics.persistence_height.set(last_block_hash_num.as_ref().map(|b| b.number).unwrap_or(0) as f64);
+        self.metrics
+            .persistence_height
+            .set(last_block_hash_num.as_ref().map(|b| b.number).unwrap_or(0) as f64);
         Ok(last_block_hash_num)
     }
 
@@ -493,12 +495,13 @@ mod tests {
     use alloy_primitives::B256;
     use reth_chain_state::test_utils::TestBlockBuilder;
     use reth_exex_types::FinishedExExHeight;
-    use reth_provider::test_utils::create_test_provider_factory;
+    use reth_provider::{providers::BlockchainProvider2, test_utils::create_test_provider_factory};
     use reth_prune::Pruner;
     use tokio::sync::mpsc::unbounded_channel;
 
     fn default_persistence_handle() -> PersistenceHandle {
         let provider = create_test_provider_factory();
+        let view_provider = BlockchainProvider2::new(provider.clone()).unwrap();
 
         let (_finished_exex_height_tx, finished_exex_height_rx) =
             tokio::sync::watch::channel(FinishedExExHeight::NoExExs);
@@ -515,7 +518,7 @@ mod tests {
         );
 
         let (sync_metrics_tx, _sync_metrics_rx) = unbounded_channel();
-        PersistenceHandle::spawn_service(provider, pruner, sync_metrics_tx, false)
+        PersistenceHandle::spawn_service(provider, view_provider, pruner, sync_metrics_tx, false)
     }
 
     #[tokio::test]
