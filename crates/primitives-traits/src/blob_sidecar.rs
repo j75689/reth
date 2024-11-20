@@ -82,16 +82,24 @@ impl BlobSidecars {
 
 impl Encodable for BlobSidecar {
     fn encode(&self, out: &mut dyn BufMut) {
-        let list_header_self = alloy_rlp::Header { list: true, payload_length: self.length() };
+        let payload_length = self.blob_transaction_sidecar.length() +
+            self.block_number.length() +
+            self.block_hash.length() +
+            self.tx_index.length() +
+            self.tx_hash.length();
+
+        let list_header_self = alloy_rlp::Header { list: false, payload_length };
         list_header_self.encode(out);
 
         let list_header_tx_sidecar = alloy_rlp::Header {
-            list: true,
+            list: false,
             payload_length: self.blob_transaction_sidecar.length(),
         };
         list_header_tx_sidecar.encode(out);
 
-        self.blob_transaction_sidecar.encode(out);
+        self.blob_transaction_sidecar.blobs.encode(out);
+        self.blob_transaction_sidecar.commitments.encode(out);
+        self.blob_transaction_sidecar.proofs.encode(out);
         self.block_number.encode(out);
         self.block_hash.encode(out);
         self.tx_index.encode(out);
@@ -99,8 +107,24 @@ impl Encodable for BlobSidecar {
     }
 
     fn length(&self) -> usize {
-        self.blob_transaction_sidecar.length() +
-            self.blob_transaction_sidecar.length().length() +
+        let payload_length = self.blob_transaction_sidecar.length() +
+            self.block_number.length() +
+            self.block_hash.length() +
+            self.tx_index.length() +
+            self.tx_hash.length();
+
+        let list_header_self = alloy_rlp::Header { list: true, payload_length };
+        let list_header_self_length = list_header_self.length();
+
+        let list_header_tx_sidecar = alloy_rlp::Header {
+            list: true,
+            payload_length: self.blob_transaction_sidecar.length(),
+        };
+        let header_length = list_header_tx_sidecar.length();
+
+        list_header_self_length +
+            header_length +
+            self.blob_transaction_sidecar.length() +
             self.block_number.length() +
             self.block_hash.length() +
             self.tx_index.length() +
@@ -114,7 +138,11 @@ impl Decodable for BlobSidecar {
         let _rlp_head_tx_sidecar = alloy_rlp::Header::decode(buf)?;
 
         let this = Self {
-            blob_transaction_sidecar: Decodable::decode(buf)?,
+            blob_transaction_sidecar: BlobTransactionSidecar {
+                blobs: Decodable::decode(buf)?,
+                commitments: Decodable::decode(buf)?,
+                proofs: Decodable::decode(buf)?,
+            },
             block_number: Decodable::decode(buf)?,
             block_hash: Decodable::decode(buf)?,
             tx_index: Decodable::decode(buf)?,
@@ -222,7 +250,7 @@ mod tests {
     fn test_blob_sidecar_rlp() {
         let blob_sidecar = BlobSidecar {
             blob_transaction_sidecar: BlobTransactionSidecar {
-                blobs: vec![],
+                blobs: vec![Default::default()],
                 commitments: vec![Default::default()],
                 proofs: vec![Default::default()],
             },

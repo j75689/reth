@@ -18,7 +18,7 @@ alloy-consensus = { workspace = true, features = ["serde"] }
 alloy-eips.workspace = true
 alloy-genesis.workspace = true
 alloy-primitives.workspace = true
-alloy-rlp.workspace = true
+alloy-rlp = { workspace = true, features = ["derive"] }
 
 revm-primitives = { workspace = true, features = ["serde"] }
 
