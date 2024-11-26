@@ -20,6 +20,7 @@ revm-primitives.workspace = true
 
 alloy-chains.workspace = true
 alloy-primitives.workspace = true
+alloy-consensus.workspace = true 
 
 reth-bsc-chainspec.workspace = true
 reth-bsc-forks.workspace = true

@@ -3,29 +3,13 @@ use crate::{
     TransactionSignedEcRecovered, Withdrawals,
 };
 use alloc::vec::Vec;
-pub use alloy_eips::eip1898::{
-    BlockHashOrNumber, BlockId, BlockNumHash, BlockNumberOrTag, ForkBlock, RpcBlockHash,
-};
 use alloy_eips::eip2718::Encodable2718;
 use alloy_primitives::{Address, Bytes, Sealable, B256};
 use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
 use derive_more::{Deref, DerefMut};
 #[cfg(any(test, feature = "arbitrary"))]
-use proptest::prelude::prop_compose;
-#[cfg(any(test, feature = "arbitrary"))]
 pub use reth_primitives_traits::test_utils::{generate_valid_header, valid_header_strategy};
-use reth_primitives_traits::Requests;
 use serde::{Deserialize, Serialize};
-
-// HACK(onbjerg): we need this to always set `requests` to `None` since we might otherwise generate
-// a block with `None` withdrawals and `Some` requests, in which case we end up trying to decode the
-// requests as withdrawals
-#[cfg(any(feature = "arbitrary", test))]
-prop_compose! {
-    pub fn empty_requests_strategy()(_ in 0..1) -> Option<Requests> {
-        None
-    }
-}
 
 /// Ethereum full block.
 ///
@@ -123,7 +107,6 @@ mod block_rlp {
         transactions: Vec<TransactionSigned>,
         ommers: Vec<Header>,
         withdrawals: Option<Withdrawals>,
-        requests: Option<Requests>,
         sidecars: Option<BlobSidecars>,
     }
 
@@ -134,22 +117,18 @@ mod block_rlp {
         transactions: &'a Vec<TransactionSigned>,
         ommers: &'a Vec<Header>,
         withdrawals: Option<&'a Withdrawals>,
-        requests: Option<&'a Requests>,
         sidecars: Option<&'a BlobSidecars>,
     }
 
     impl<'a> From<&'a Block> for HelperRef<'a, Header> {
         fn from(block: &'a Block) -> Self {
-            let Block {
-                header,
-                body: BlockBody { transactions, ommers, withdrawals, requests, sidecars },
-            } = block;
+            let Block { header, body: BlockBody { transactions, ommers, withdrawals, sidecars } } =
+                block;
             Self {
                 header,
                 transactions,
                 ommers,
                 withdrawals: withdrawals.as_ref(),
-                requests: requests.as_ref(),
                 sidecars: sidecars.as_ref(),
             }
         }
@@ -159,14 +138,13 @@ mod block_rlp {
         fn from(block: &'a SealedBlock) -> Self {
             let SealedBlock {
                 header,
-                body: BlockBody { transactions, ommers, withdrawals, requests, sidecars },
+                body: BlockBody { transactions, ommers, withdrawals, sidecars },
             } = block;
             Self {
                 header,
                 transactions,
                 ommers,
                 withdrawals: withdrawals.as_ref(),
-                requests: requests.as_ref(),
                 sidecars: sidecars.as_ref(),
             }
         }
@@ -174,47 +152,39 @@ mod block_rlp {
 
     impl Decodable for Block {
         fn decode(b: &mut &[u8]) -> alloy_rlp::Result<Self> {
-            let Helper { header, transactions, ommers, withdrawals, requests, sidecars } =
-                Helper::decode(b)?;
-            Ok(Self {
-                header,
-                body: BlockBody { transactions, ommers, withdrawals, requests, sidecars },
-            })
+            let Helper { header, transactions, ommers, withdrawals, sidecars } = Helper::decode(b)?;
+            Ok(Self { header, body: BlockBody { transactions, ommers, withdrawals, sidecars } })
         }
     }
 
     impl Decodable for SealedBlock {
         fn decode(b: &mut &[u8]) -> alloy_rlp::Result<Self> {
-            let Helper { header, transactions, ommers, withdrawals, requests, sidecars } =
-                Helper::decode(b)?;
-            Ok(Self {
-                header,
-                body: BlockBody { transactions, ommers, withdrawals, requests, sidecars },
-            })
+            let Helper { header, transactions, ommers, withdrawals, sidecars } = Helper::decode(b)?;
+            Ok(Self { header, body: BlockBody { transactions, ommers, withdrawals, sidecars } })
         }
     }
 
     impl Encodable for Block {
-        fn length(&self) -> usize {
-            let helper: HelperRef<'_, _> = self.into();
-            helper.length()
-        }
-
         fn encode(&self, out: &mut dyn bytes::BufMut) {
             let helper: HelperRef<'_, _> = self.into();
             helper.encode(out)
+        }
+
+        fn length(&self) -> usize {
+            let helper: HelperRef<'_, _> = self.into();
+            helper.length()
         }
     }
 
     impl Encodable for SealedBlock {
-        fn length(&self) -> usize {
-            let helper: HelperRef<'_, _> = self.into();
-            helper.length()
-        }
-
         fn encode(&self, out: &mut dyn bytes::BufMut) {
             let helper: HelperRef<'_, _> = self.into();
             helper.encode(out)
+        }
+
+        fn length(&self) -> usize {
+            let helper: HelperRef<'_, _> = self.into();
+            helper.length()
         }
     }
 }
@@ -232,14 +202,7 @@ impl<'a> arbitrary::Arbitrary<'a> for Block {
 
         Ok(Self {
             header: u.arbitrary()?,
-            body: BlockBody {
-                transactions,
-                ommers,
-                // for now just generate empty requests, see HACK above
-                requests: u.arbitrary()?,
-                withdrawals: u.arbitrary()?,
-                sidecars: None,
-            },
+            body: BlockBody { transactions, ommers, withdrawals: u.arbitrary()?, sidecars: None },
         })
     }
 }
@@ -591,8 +554,6 @@ pub struct BlockBody {
     // only for bsc
     /// Tx sidecars for the block.
     pub sidecars: Option<BlobSidecars>,
-    /// Requests in the block.
-    pub requests: Option<Requests>,
 }
 
 impl BlockBody {
@@ -615,12 +576,6 @@ impl BlockBody {
     /// withdrawals, this will return `None`.
     pub fn calculate_withdrawals_root(&self) -> Option<B256> {
         self.withdrawals.as_ref().map(|w| crate::proofs::calculate_withdrawals_root(w))
-    }
-
-    /// Calculate the requests root for the block body, if requests exist. If there are no
-    /// requests, this will return `None`.
-    pub fn calculate_requests_root(&self) -> Option<B256> {
-        self.requests.as_ref().map(|r| crate::proofs::calculate_requests_root(&r.0))
     }
 
     /// Recover signer addresses for all transactions in the block body.
@@ -695,7 +650,6 @@ impl From<Block> for BlockBody {
             ommers: block.body.ommers,
             withdrawals: block.body.withdrawals,
             sidecars: block.body.sidecars,
-            requests: block.body.requests,
         }
     }
 }
@@ -717,14 +671,7 @@ impl<'a> arbitrary::Arbitrary<'a> for BlockBody {
             })
             .collect::<arbitrary::Result<Vec<_>>>()?;
 
-        // for now just generate empty requests, see HACK above
-        Ok(Self {
-            transactions,
-            ommers,
-            sidecars: None,
-            requests: None,
-            withdrawals: u.arbitrary()?,
-        })
+        Ok(Self { transactions, ommers, sidecars: None, withdrawals: u.arbitrary()? })
     }
 }
 
@@ -734,9 +681,7 @@ pub(super) mod serde_bincode_compat {
     use alloc::{borrow::Cow, vec::Vec};
     use alloy_consensus::serde_bincode_compat::Header;
     use alloy_primitives::Address;
-    use reth_primitives_traits::{
-        serde_bincode_compat::SealedHeader, BlobSidecars, Requests, Withdrawals,
-    };
+    use reth_primitives_traits::{serde_bincode_compat::SealedHeader, BlobSidecars, Withdrawals};
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
     use serde_with::{DeserializeAs, SerializeAs};
 
@@ -762,7 +707,6 @@ pub(super) mod serde_bincode_compat {
         transactions: Vec<TransactionSigned<'a>>,
         ommers: Vec<Header<'a>>,
         withdrawals: Cow<'a, Option<Withdrawals>>,
-        requests: Cow<'a, Option<Requests>>,
         sidecars: Cow<'a, Option<BlobSidecars>>,
     }
 
@@ -772,7 +716,6 @@ pub(super) mod serde_bincode_compat {
                 transactions: value.transactions.iter().map(Into::into).collect(),
                 ommers: value.ommers.iter().map(Into::into).collect(),
                 withdrawals: Cow::Borrowed(&value.withdrawals),
-                requests: Cow::Borrowed(&value.requests),
                 sidecars: Cow::Borrowed(&value.sidecars),
             }
         }
@@ -784,7 +727,6 @@ pub(super) mod serde_bincode_compat {
                 transactions: value.transactions.into_iter().map(Into::into).collect(),
                 ommers: value.ommers.into_iter().map(Into::into).collect(),
                 withdrawals: value.withdrawals.into_owned(),
-                requests: value.requests.into_owned(),
                 sidecars: value.sidecars.into_owned(),
             }
         }
@@ -989,8 +931,11 @@ pub(super) mod serde_bincode_compat {
 
 #[cfg(test)]
 mod tests {
-    use super::{BlockNumberOrTag::*, *};
-    use alloy_eips::eip1898::HexStringMissingPrefixError;
+    use super::*;
+    use alloy_eips::{
+        eip1898::HexStringMissingPrefixError, BlockId, BlockNumberOrTag, BlockNumberOrTag::*,
+        RpcBlockHash,
+    };
     use alloy_primitives::hex_literal::hex;
     use alloy_rlp::{Decodable, Encodable};
     use std::str::FromStr;
@@ -1181,5 +1126,14 @@ mod tests {
         let block = block.unseal();
         let block = block.seal_slow();
         assert_eq!(sealed, block.hash());
+    }
+
+    #[test]
+    fn empty_block_rlp() {
+        let body = BlockBody::default();
+        let mut buf = Vec::new();
+        body.encode(&mut buf);
+        let decoded = BlockBody::decode(&mut buf.as_slice()).unwrap();
+        assert_eq!(body, decoded);
     }
 }

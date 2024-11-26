@@ -6,7 +6,7 @@
 // The `bsc` feature must be enabled to use this crate.
 #![cfg(feature = "bsc")]
 
-use std::sync::Arc;
+use std::{convert::Infallible, sync::Arc};
 
 use alloy_primitives::{Address, Bytes, U256};
 use reth_bsc_chainspec::BscChainSpec;
@@ -54,6 +54,7 @@ impl BscEvmConfig {
 
 impl ConfigureEvmEnv for BscEvmConfig {
     type Header = Header;
+    type Error = Infallible; // TODO: error type
 
     fn fill_tx_env(&self, tx_env: &mut TxEnv, transaction: &TransactionSigned, sender: Address) {
         transaction.fill_tx_env(tx_env, sender);
@@ -101,7 +102,7 @@ impl ConfigureEvmEnv for BscEvmConfig {
         &self,
         parent: &Self::Header,
         attributes: NextBlockEnvAttributes,
-    ) -> (CfgEnvWithHandlerCfg, BlockEnv) {
+    ) -> Result<(CfgEnvWithHandlerCfg, BlockEnv), Self::Error> {
         // configure evm env based on parent block
         let cfg = CfgEnv::default().with_chain_id(self.chain_spec.chain().id());
 
@@ -112,14 +113,7 @@ impl ConfigureEvmEnv for BscEvmConfig {
         // cancun now, we need to set the excess blob gas to the default value
         let blob_excess_gas_and_price = parent
             .next_block_excess_blob_gas()
-            .or_else(|| {
-                if spec_id == SpecId::CANCUN {
-                    // default excess blob gas is zero
-                    Some(0)
-                } else {
-                    None
-                }
-            })
+            .or_else(|| (spec_id == SpecId::CANCUN).then_some(0))
             .map(BlobExcessGasAndPrice::new);
 
         let mut basefee = parent.next_block_base_fee(
@@ -156,7 +150,7 @@ impl ConfigureEvmEnv for BscEvmConfig {
             blob_excess_gas_and_price,
         };
 
-        (CfgEnvWithHandlerCfg::new_with_spec_id(cfg, spec_id), block_env)
+        Ok((CfgEnvWithHandlerCfg::new_with_spec_id(cfg, spec_id), block_env))
     }
 }
 

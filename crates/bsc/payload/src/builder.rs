@@ -2,7 +2,8 @@
 
 use std::sync::Arc;
 
-use alloy_eips::eip4844::MAX_DATA_GAS_PER_BLOCK;
+use alloy_consensus::EMPTY_OMMER_ROOT_HASH;
+use alloy_eips::{eip4844::MAX_DATA_GAS_PER_BLOCK, merge::BEACON_NONCE};
 use alloy_primitives::U256;
 use reth_basic_payload_builder::*;
 use reth_bsc_chainspec::BscChainSpec;
@@ -12,10 +13,9 @@ use reth_evm::{system_calls::SystemCaller, ConfigureEvm, ConfigureEvmEnv, NextBl
 use reth_execution_types::ExecutionOutcome;
 use reth_payload_primitives::{PayloadBuilderAttributes, PayloadBuilderError};
 use reth_primitives::{
-    constants::BEACON_NONCE,
     proofs,
     revm_primitives::{BlockEnv, CfgEnvWithHandlerCfg},
-    Block, BlockBody, Header, Receipt, EMPTY_OMMER_ROOT_HASH,
+    Block, BlockBody, Header, Receipt,
 };
 use reth_provider::StateProviderFactory;
 use reth_revm::database::StateProviderDatabase;
@@ -56,7 +56,7 @@ where
         &self,
         config: &PayloadConfig<BscPayloadBuilderAttributes>,
         parent: &Header,
-    ) -> (CfgEnvWithHandlerCfg, BlockEnv) {
+    ) -> Result<(CfgEnvWithHandlerCfg, BlockEnv), EvmConfig::Error> {
         let next_attributes = NextBlockEnvAttributes {
             timestamp: config.attributes.timestamp(),
             suggested_fee_recipient: config.attributes.suggested_fee_recipient(),
@@ -80,7 +80,9 @@ where
         &self,
         args: BuildArguments<Pool, Client, BscPayloadBuilderAttributes, BscBuiltPayload>,
     ) -> Result<BuildOutcome<BscBuiltPayload>, PayloadBuilderError> {
-        let (cfg_env, block_env) = self.cfg_and_block_env(&args.config, &args.config.parent_block);
+        let (cfg_env, block_env) = self
+            .cfg_and_block_env(&args.config, &args.config.parent_header)
+            .map_err(PayloadBuilderError::other)?;
         bsc_payload(self.evm_config.clone(), args, cfg_env, block_env)
     }
 
@@ -100,7 +102,9 @@ where
             cancel: Default::default(),
             best_payload: None,
         };
-        let (cfg_env, block_env) = self.cfg_and_block_env(&args.config, &args.config.parent_block);
+        let (cfg_env, block_env) = self
+            .cfg_and_block_env(&args.config, &args.config.parent_header)
+            .map_err(PayloadBuilderError::other)?;
         bsc_payload(self.evm_config.clone(), args, cfg_env, block_env)?
             .into_payload()
             .ok_or_else(|| PayloadBuilderError::MissingPayload)
@@ -130,13 +134,13 @@ where
     let BuildArguments { client, pool, mut cached_reads, config, cancel, best_payload } = args;
 
     let chain_spec = client.chain_spec();
-    let state_provider = client.state_by_block_hash(config.parent_block.hash())?;
+    let state_provider = client.state_by_block_hash(config.parent_header.hash())?;
     let state = StateProviderDatabase::new(state_provider);
     let mut db =
         State::builder().with_database_ref(cached_reads.as_db(state)).with_bundle_update().build();
-    let PayloadConfig { parent_block, extra_data, attributes } = config;
+    let PayloadConfig { parent_header, extra_data, attributes } = config;
 
-    debug!(target: "payload_builder", id=%attributes.payload_attributes.id, parent_hash = ?parent_block.hash(), parent_number = parent_block.number, "building new payload");
+    debug!(target: "payload_builder", id=%attributes.payload_attributes.id, parent_hash = ?parent_header.hash(), parent_number = parent_header.number, "building new payload");
     let mut cumulative_gas_used = 0;
     let mut sum_blob_gas_used = 0;
     let block_gas_limit: u64 = initialized_block_env.gas_limit.to::<u64>();
@@ -154,7 +158,7 @@ where
 
     let block_number = initialized_block_env.number.to::<u64>();
 
-    let mut system_caller = SystemCaller::new(&evm_config, chain_spec.clone());
+    let mut system_caller = SystemCaller::new(evm_config.clone(), chain_spec.clone());
 
     // apply eip-4788 pre block contract call
     system_caller
@@ -166,7 +170,7 @@ where
         )
         .map_err(|err| {
             warn!(target: "payload_builder",
-                parent_hash=%parent_block.hash(),
+                parent_hash=%parent_header.hash(),
                 %err,
                 "failed to apply beacon root contract call for payload"
             );
@@ -178,10 +182,10 @@ where
         &mut db,
         &initialized_cfg,
         &initialized_block_env,
-        parent_block.hash(),
+        parent_header.hash(),
     )
         .map_err(|err| {
-            warn!(target: "payload_builder", parent_hash=%parent_block.hash(), %err, "failed to update blockhashes for payload");
+            warn!(target: "payload_builder", parent_hash=%parent_header.hash(), %err, "failed to update blockhashes for payload");
             PayloadBuilderError::Internal(err.into())
         })?;
 
@@ -222,7 +226,7 @@ where
         let env = EnvWithHandlerCfg::new_with_cfg_env(
             initialized_cfg.clone(),
             initialized_block_env.clone(),
-            evm_config.tx_env(&tx),
+            evm_config.tx_env(tx.as_signed(), tx.signer()),
         );
 
         // Configure the environment for the block.
@@ -301,7 +305,7 @@ where
     }
 
     // calculate the requests and the requests root
-    let (requests, requests_root) = (None, None);
+    let (requests, requests_hash) = (None, None);
 
     let WithdrawalsOutcome { withdrawals_root, withdrawals } = commit_withdrawals(
         &mut db,
@@ -318,7 +322,7 @@ where
         db.take_bundle(),
         vec![receipts.clone()].into(),
         block_number,
-        vec![requests.clone().unwrap_or_default()],
+        vec![requests.unwrap_or_default()],
     );
     let receipts_root =
         execution_outcome.receipts_root_slow(block_number).expect("Number is in range");
@@ -330,7 +334,7 @@ where
         let state_provider = db.database.0.inner.borrow_mut();
         state_provider.db.state_root_with_updates(hashed_state.clone()).inspect_err(|err| {
             warn!(target: "payload_builder",
-                parent_hash=%parent_block.hash(),
+                parent_hash=%parent_header.hash(),
                 %err,
                 "failed to calculate state root for payload"
             );
@@ -352,9 +356,9 @@ where
             executed_txs.iter().filter(|tx| tx.is_eip4844()).map(|tx| tx.hash).collect(),
         )?;
 
-        excess_blob_gas = if chain_spec.is_cancun_active_at_timestamp(parent_block.timestamp) {
-            let parent_excess_blob_gas = parent_block.excess_blob_gas.unwrap_or_default();
-            let parent_blob_gas_used = parent_block.blob_gas_used.unwrap_or_default();
+        excess_blob_gas = if chain_spec.is_cancun_active_at_timestamp(parent_header.timestamp) {
+            let parent_excess_blob_gas = parent_header.excess_blob_gas.unwrap_or_default();
+            let parent_blob_gas_used = parent_header.blob_gas_used.unwrap_or_default();
             Some(calc_excess_blob_gas(parent_excess_blob_gas, parent_blob_gas_used))
         } else {
             // for the first post-fork block, both parent.blob_gas_used and
@@ -366,7 +370,7 @@ where
     }
 
     let header = Header {
-        parent_hash: parent_block.hash(),
+        parent_hash: parent_header.hash(),
         ommers_hash: EMPTY_OMMER_ROOT_HASH,
         beneficiary: initialized_block_env.coinbase,
         state_root,
@@ -378,7 +382,7 @@ where
         mix_hash: attributes.payload_attributes.prev_randao,
         nonce: BEACON_NONCE.into(),
         base_fee_per_gas: Some(base_fee),
-        number: parent_block.number + 1,
+        number: parent_header.number + 1,
         gas_limit: block_gas_limit,
         difficulty: U256::ZERO,
         gas_used: cumulative_gas_used,
@@ -386,19 +390,13 @@ where
         parent_beacon_block_root: attributes.payload_attributes.parent_beacon_block_root,
         blob_gas_used: blob_gas_used.map(Into::into),
         excess_blob_gas: excess_blob_gas.map(Into::into),
-        requests_root,
+        requests_hash,
     };
 
     // seal the block
     let block = Block {
         header,
-        body: BlockBody {
-            transactions: executed_txs,
-            ommers: vec![],
-            withdrawals,
-            sidecars: None,
-            requests,
-        },
+        body: BlockBody { transactions: executed_txs, ommers: vec![], withdrawals, sidecars: None },
     };
 
     let sealed_block = block.seal_slow();

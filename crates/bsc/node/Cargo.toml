@@ -26,6 +26,7 @@ reth-primitives.workspace = true
 reth-config.workspace = true
 reth-rpc.workspace = true
 reth-node-api.workspace = true
+reth-trie-db.workspace = true
 
 # bsc-reth
 reth-bsc-chainspec.workspace = true
@@ -62,4 +63,8 @@ bsc = [
     "reth-bsc-payload-builder/bsc",
     "reth-bsc-engine/bsc",
 ]
-asm-keccak = ["reth-primitives/asm-keccak"]
+asm-keccak = [
+	"reth-primitives/asm-keccak",
+	"reth/asm-keccak",
+	"reth-node-core/asm-keccak"
+]

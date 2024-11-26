@@ -3,6 +3,7 @@
 use core::fmt::Display;
 use std::{collections::HashMap, num::NonZeroUsize, sync::Arc};
 
+use alloy_consensus::Transaction as _;
 use alloy_primitives::{Address, BlockNumber, Bytes, B256, U256};
 use lazy_static::lazy_static;
 use lru::LruCache;
@@ -141,11 +142,15 @@ where
         self.bsc_executor(db, prefetch_tx)
     }
 
-    fn batch_executor<DB>(&self, db: DB) -> Self::BatchExecutor<DB>
+    fn batch_executor<DB>(
+        &self,
+        db: DB,
+        prefetch_tx: Option<UnboundedSender<EvmState>>,
+    ) -> Self::BatchExecutor<DB>
     where
         DB: Database<Error: Into<ProviderError> + Display>,
     {
-        let executor = self.bsc_executor(db, None);
+        let executor = self.bsc_executor(db, prefetch_tx);
         BscBatchExecutor {
             executor,
             batch_record: BlockBatchRecord::default(),
@@ -244,7 +249,6 @@ where
             })?;
 
             if let Some(tx) = tx.as_ref() {
-                // let post_state = HashedPostState::from_state(state.clone());
                 tx.send(state.clone()).unwrap_or_else(|err| {
                     debug!(target: "evm_executor", ?err, "Failed to send post state to prefetch channel")
                 });
@@ -791,7 +795,7 @@ where
         Ok(BlockExecutionOutput {
             state: self.state.take_bundle(),
             receipts,
-            requests: Vec::default(),
+            requests: Default::default(),
             gas_used,
             snapshot,
         })
@@ -816,7 +820,7 @@ where
         Ok(BlockExecutionOutput {
             state: self.state.take_bundle(),
             receipts,
-            requests: Vec::default(),
+            requests: Default::default(),
             gas_used,
             snapshot,
         })
@@ -845,7 +849,7 @@ where
         Ok(BlockExecutionOutput {
             state: self.state.take_bundle(),
             receipts,
-            requests: Vec::default(),
+            requests: Default::default(),
             gas_used,
             snapshot,
         })

@@ -223,7 +223,7 @@ where
             provider.tx_ref(),
             provider.static_file_provider(),
         ));
-        let mut executor = self.executor_provider.batch_executor(db);
+        let mut executor = self.executor_provider.batch_executor(db, None);
         executor.set_tip(max_block);
         executor.set_prune_modes(prune_modes);
 
@@ -678,7 +678,8 @@ mod tests {
     use assert_matches::assert_matches;
     use reth_chainspec::ChainSpecBuilder;
     use reth_db_api::{models::AccountBeforeTx, transaction::DbTxMut};
-    use reth_evm_ethereum::execute::EthExecutorProvider;
+    use reth_evm::execute::BasicBlockExecutorProvider;
+    use reth_evm_ethereum::execute::EthExecutionStrategyFactory;
     use reth_execution_errors::BlockValidationError;
     use reth_primitives::{Account, Bytecode, SealedBlock, StorageEntry};
     use reth_provider::{
@@ -689,10 +690,11 @@ mod tests {
     use reth_stages_api::StageUnitCheckpoint;
     use std::collections::BTreeMap;
 
-    fn stage() -> ExecutionStage<EthExecutorProvider> {
-        let executor_provider = EthExecutorProvider::ethereum(Arc::new(
+    fn stage() -> ExecutionStage<BasicBlockExecutorProvider<EthExecutionStrategyFactory>> {
+        let strategy_factory = EthExecutionStrategyFactory::ethereum(Arc::new(
             ChainSpecBuilder::mainnet().berlin_activated().build(),
         ));
+        let executor_provider = BasicBlockExecutorProvider::new(strategy_factory);
         ExecutionStage::new(
             executor_provider,
             ExecutionStageThresholds {

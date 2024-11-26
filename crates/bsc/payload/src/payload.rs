@@ -2,8 +2,7 @@
 
 //! Bsc builder support
 
-use std::convert::Infallible;
-
+use alloy_eips::eip7685::Requests;
 use alloy_primitives::{Address, B256, U256};
 use alloy_rpc_types_engine::{
     ExecutionPayloadEnvelopeV2, ExecutionPayloadEnvelopeV3, ExecutionPayloadEnvelopeV4,
@@ -14,9 +13,9 @@ use reth_payload_builder::EthPayloadBuilderAttributes;
 use reth_payload_primitives::{BuiltPayload, PayloadBuilderAttributes};
 use reth_primitives::{BlobTransactionSidecar, SealedBlock, Withdrawals};
 use reth_rpc_types_compat::engine::payload::{
-    block_to_payload_v1, block_to_payload_v3, block_to_payload_v4,
-    convert_block_to_payload_field_v2,
+    block_to_payload_v1, block_to_payload_v3, convert_block_to_payload_field_v2,
 };
+use std::{convert::Infallible, sync::Arc};
 
 /// Bsc Payload Builder Attributes
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -32,8 +31,14 @@ impl PayloadBuilderAttributes for BscPayloadBuilderAttributes {
     /// Creates a new payload builder for the given parent block and the attributes.
     ///
     /// Derives the unique [`PayloadId`] for the given parent and attributes
-    fn try_new(parent: B256, attributes: PayloadAttributes) -> Result<Self, Infallible> {
-        Ok(Self { payload_attributes: EthPayloadBuilderAttributes::try_new(parent, attributes)? })
+    fn try_new(
+        parent: B256,
+        attributes: PayloadAttributes,
+        version: u8,
+    ) -> Result<Self, Infallible> {
+        Ok(Self {
+            payload_attributes: EthPayloadBuilderAttributes::try_new(parent, attributes, version)?,
+        })
     }
 
     fn payload_id(&self) -> PayloadId {
@@ -110,8 +115,8 @@ impl BscBuiltPayload {
     }
 
     /// Adds sidecars to the payload.
-    pub fn extend_sidecars(&mut self, sidecars: Vec<BlobTransactionSidecar>) {
-        self.sidecars.extend(sidecars)
+    pub fn extend_sidecars(&mut self, sidecars: Vec<Arc<BlobTransactionSidecar>>) {
+        self.sidecars.extend(sidecars.into_iter().map(|arc| (*arc).clone()));
     }
 }
 
@@ -127,6 +132,10 @@ impl BuiltPayload for BscBuiltPayload {
     fn executed_block(&self) -> Option<ExecutedBlock> {
         self.executed_block.clone()
     }
+
+    fn requests(&self) -> Option<Requests> {
+        None
+    }
 }
 
 impl BuiltPayload for &BscBuiltPayload {
@@ -140,6 +149,10 @@ impl BuiltPayload for &BscBuiltPayload {
 
     fn executed_block(&self) -> Option<ExecutedBlock> {
         self.executed_block.clone()
+    }
+
+    fn requests(&self) -> Option<Requests> {
+        None
     }
 }
 
@@ -185,7 +198,7 @@ impl From<BscBuiltPayload> for ExecutionPayloadEnvelopeV4 {
         let BscBuiltPayload { block, fees, sidecars, .. } = value;
 
         Self {
-            execution_payload: block_to_payload_v4(block),
+            execution_payload: block_to_payload_v3(block),
             block_value: fees,
             // From the engine API spec:
             //
@@ -197,6 +210,7 @@ impl From<BscBuiltPayload> for ExecutionPayloadEnvelopeV4 {
             // <https://github.com/ethereum/execution-apis/blob/fe8e13c288c592ec154ce25c534e26cb7ce0530d/src/engine/cancun.md#specification-2>
             should_override_builder: false,
             blobs_bundle: sidecars.into_iter().map(Into::into).collect::<Vec<_>>().into(),
+            execution_requests: Default::default(),
         }
     }
 }

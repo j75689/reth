@@ -4,16 +4,16 @@
 use std::sync::Arc;
 
 use crate::eth::EthTxBuilder;
-use alloy_network::AnyNetwork;
+use alloy_eips::BlockNumberOrTag;
+use alloy_network::Ethereum;
 use alloy_primitives::U256;
 use derive_more::Deref;
 use reth_bsc_consensus::BscTraceHelper;
-use reth_node_api::{BuilderProvider, FullNodeComponents};
-use reth_primitives::BlockNumberOrTag;
 use reth_provider::{BlockReaderIdExt, CanonStateSubscriptions, ChainSpecProvider};
 use reth_rpc_eth_api::{
     helpers::{EthSigner, SpawnBlocking},
-    EthApiTypes,
+    node::RpcNodeCoreExt,
+    EthApiTypes, RpcNodeCore,
 };
 use reth_rpc_eth_types::{
     EthApiBuilderCtx, EthApiError, EthStateCache, FeeHistoryCache, GasCap, GasPriceOracle,
@@ -21,7 +21,7 @@ use reth_rpc_eth_types::{
 };
 use reth_tasks::{
     pool::{BlockingTaskGuard, BlockingTaskPool},
-    TaskExecutor, TaskSpawner, TokioTaskExecutor,
+    TaskSpawner, TokioTaskExecutor,
 };
 use tokio::sync::Mutex;
 
@@ -40,11 +40,17 @@ pub struct EthApi<Provider, Pool, Network, EvmConfig> {
     #[deref]
     pub(super) inner: Arc<EthApiInner<Provider, Pool, Network, EvmConfig>>,
     pub(super) bsc_trace_helper: Option<BscTraceHelper>,
+    /// Transaction RPC response builder.
+    pub tx_resp_builder: EthTxBuilder,
 }
 
 impl<Provider, Pool, Network, EvmConfig> Clone for EthApi<Provider, Pool, Network, EvmConfig> {
     fn clone(&self) -> Self {
-        Self { inner: self.inner.clone(), bsc_trace_helper: self.bsc_trace_helper.clone() }
+        Self {
+            inner: self.inner.clone(),
+            bsc_trace_helper: self.bsc_trace_helper.clone(),
+            tx_resp_builder: EthTxBuilder,
+        }
     }
 }
 
@@ -85,7 +91,7 @@ where
             proof_permits,
         );
 
-        Self { inner: Arc::new(inner), bsc_trace_helper }
+        Self { inner: Arc::new(inner), bsc_trace_helper, tx_resp_builder: EthTxBuilder }
     }
 }
 
@@ -98,7 +104,7 @@ where
 {
     /// Creates a new, shareable instance.
     pub fn with_spawner<Tasks, Events>(
-        ctx: &EthApiBuilderCtx<Provider, Pool, EvmConfig, Network, Tasks, Events, Self>,
+        ctx: &EthApiBuilderCtx<Provider, Pool, EvmConfig, Network, Tasks, Events>,
     ) -> Self
     where
         Tasks: TaskSpawner + Clone + 'static,
@@ -123,7 +129,11 @@ where
             ctx.config.proof_permits,
         );
 
-        Self { inner: Arc::new(inner), bsc_trace_helper: ctx.bsc_trace_helper.clone() }
+        Self {
+            inner: Arc::new(inner),
+            bsc_trace_helper: ctx.bsc_trace_helper.clone(),
+            tx_resp_builder: EthTxBuilder,
+        }
     }
 }
 
@@ -132,9 +142,52 @@ where
     Self: Send + Sync,
 {
     type Error = EthApiError;
-    // todo: replace with alloy_network::Ethereum
-    type NetworkTypes = AnyNetwork;
+    type NetworkTypes = Ethereum;
     type TransactionCompat = EthTxBuilder;
+
+    fn tx_resp_builder(&self) -> &Self::TransactionCompat {
+        &self.tx_resp_builder
+    }
+}
+
+impl<Provider, Pool, Network, EvmConfig> RpcNodeCore for EthApi<Provider, Pool, Network, EvmConfig>
+where
+    Provider: Send + Sync + Clone + Unpin,
+    Pool: Send + Sync + Clone + Unpin,
+    Network: Send + Sync + Clone,
+    EvmConfig: Send + Sync + Clone + Unpin,
+{
+    type Provider = Provider;
+    type Pool = Pool;
+    type Evm = EvmConfig;
+    type Network = Network;
+
+    fn pool(&self) -> &Self::Pool {
+        self.inner.pool()
+    }
+
+    fn evm_config(&self) -> &Self::Evm {
+        self.inner.evm_config()
+    }
+
+    fn network(&self) -> &Self::Network {
+        self.inner.network()
+    }
+
+    fn provider(&self) -> &Self::Provider {
+        self.inner.provider()
+    }
+}
+
+impl<Provider, Pool, Network, EvmConfig> RpcNodeCoreExt
+    for EthApi<Provider, Pool, Network, EvmConfig>
+where
+    Self: RpcNodeCore,
+{
+    #[inline]
+    fn cache(&self) -> &EthStateCache {
+        self.inner.cache()
+    }
 }
 
 impl<Provider, Pool, Network, EvmConfig> std::fmt::Debug
@@ -163,25 +216,6 @@ where
     #[inline]
     fn tracing_task_guard(&self) -> &BlockingTaskGuard {
         self.inner.blocking_task_guard()
-    }
-}
-
-impl<N> BuilderProvider<N> for EthApi<N::Provider, N::Pool, N::Network, N::Evm>
-where
-    N: FullNodeComponents,
-{
-    type Ctx<'a> = &'a EthApiBuilderCtx<
-        N::Provider,
-        N::Pool,
-        N::Evm,
-        N::Network,
-        TaskExecutor,
-        N::Provider,
-        Self,
-    >;
-
-    fn builder() -> Box<dyn for<'a> Fn(Self::Ctx<'a>) -> Self + Send> {
-        Box::new(Self::with_spawner)
     }
 }
 
@@ -376,13 +410,14 @@ impl<Provider, Pool, Network, EvmConfig> EthApiInner<Provider, Pool, Network, Ev
 
 #[cfg(test)]
 mod tests {
+    use alloy_eips::BlockNumberOrTag;
     use alloy_primitives::{B256, U64};
     use alloy_rpc_types::FeeHistory;
     use jsonrpsee_types::error::INVALID_PARAMS_CODE;
     use reth_chainspec::{BaseFeeParams, ChainSpec, EthChainSpec};
     use reth_evm_ethereum::EthEvmConfig;
     use reth_network_api::noop::NoopNetwork;
-    use reth_primitives::{Block, BlockBody, BlockNumberOrTag, Header, TransactionSigned};
+    use reth_primitives::{Block, BlockBody, Header, TransactionSigned};
     use reth_provider::{
         test_utils::{MockEthProvider, NoopProvider},
         BlockReader, BlockReaderIdExt, ChainSpecProvider, EvmEnvProvider, StateProviderFactory,
@@ -445,8 +480,8 @@ mod tests {
         let mut rng = generators::rng();
 
         // Build mock data
-        let mut gas_used_ratios = Vec::new();
-        let mut base_fees_per_gas = Vec::new();
+        let mut gas_used_ratios = Vec::with_capacity(block_count as usize);
+        let mut base_fees_per_gas = Vec::with_capacity(block_count as usize);
         let mut last_header = None;
         let mut parent_hash = B256::default();
 
@@ -468,8 +503,9 @@ mod tests {
             last_header = Some(header.clone());
             parent_hash = hash;
 
-            let mut transactions = vec![];
-            for _ in 0..100 {
+            const TOTAL_TRANSACTIONS: usize = 100;
+            let mut transactions = Vec::with_capacity(TOTAL_TRANSACTIONS);
+            for _ in 0..TOTAL_TRANSACTIONS {
                 let random_fee: u128 = rng.gen();
 
                 if let Some(base_fee_per_gas) = header.base_fee_per_gas {

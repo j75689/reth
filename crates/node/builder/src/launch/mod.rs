@@ -10,7 +10,6 @@ use common::{Attached, LaunchContextWith, WithConfigs};
 pub use exex::ExExLauncher;
 
 use alloy_primitives::utils::format_ether;
-use alloy_rpc_types::engine::ClientVersionV1;
 use futures::{future::Either, stream, stream_select, StreamExt};
 use reth_beacon_consensus::{
     hooks::{EngineHooks, PruneHook, StaticFileHook},
@@ -28,18 +27,14 @@ use reth_exex::ExExManagerHandle;
 use reth_network::{BlockDownloaderProvider, NetworkEventListenerProvider};
 #[cfg(feature = "bsc")]
 use reth_network_api::EngineRxProvider;
-use reth_node_api::{
-    FullNodeComponents, FullNodeTypes, NodeAddOns, NodeTypesWithDB, NodeTypesWithEngine,
-};
+use reth_node_api::{AddOnsContext, FullNodeTypes, NodeTypesWithDB, NodeTypesWithEngine};
 use reth_node_core::{
     dirs::{ChainPath, DataDirPath},
     exit::NodeExitFuture,
-    rpc::eth::{helpers::AddDevSigners, FullEthApiServer},
-    version::{CARGO_PKG_VERSION, CLIENT_CODE, NAME_CLIENT, VERGEN_GIT_SHA},
 };
 use reth_node_events::{cl::ConsensusLayerHealthEvents, node};
 use reth_provider::providers::BlockchainProvider;
-use reth_rpc_engine_api::{capabilities::EngineCapabilities, EngineApi};
+use reth_rpc::eth::RpcNodeCore;
 use reth_tasks::TaskExecutor;
 use reth_tracing::tracing::{debug, info};
 use reth_transaction_pool::TransactionPool;
@@ -54,19 +49,18 @@ use crate::{
     components::{NodeComponents, NodeComponentsBuilder},
     hooks::NodeHooks,
     node::FullNode,
-    rpc::EthApiBuilderProvider,
+    rpc::{RethRpcAddOns, RpcHandle},
     AddOns, NodeBuilderWithComponents, NodeHandle,
 };
 
-/// Alias for [`reth_rpc_eth_types::EthApiBuilderCtx`], adapter for [`FullNodeComponents`].
-pub type EthApiBuilderCtx<N, Eth> = reth_rpc_eth_types::EthApiBuilderCtx<
-    <N as FullNodeTypes>::Provider,
-    <N as FullNodeComponents>::Pool,
-    <N as FullNodeComponents>::Evm,
-    <N as FullNodeComponents>::Network,
+/// Alias for [`reth_rpc_eth_types::EthApiBuilderCtx`], adapter for [`RpcNodeCore`].
+pub type EthApiBuilderCtx<N> = reth_rpc_eth_types::EthApiBuilderCtx<
+    <N as RpcNodeCore>::Provider,
+    <N as RpcNodeCore>::Pool,
+    <N as RpcNodeCore>::Evm,
+    <N as RpcNodeCore>::Network,
     TaskExecutor,
-    <N as FullNodeTypes>::Provider,
-    Eth,
+    <N as RpcNodeCore>::Provider,
 >;
 
 /// A general purpose trait that launches a new node of any kind.
@@ -116,12 +110,7 @@ where
     Types: NodeTypesWithDB<ChainSpec: EthereumHardforks + EthChainSpec> + NodeTypesWithEngine,
     T: FullNodeTypes<Provider = BlockchainProvider<Types>, Types = Types>,
     CB: NodeComponentsBuilder<T>,
-    AO: NodeAddOns<
-        NodeAdapter<T, CB::Components>,
-        EthApi: EthApiBuilderProvider<NodeAdapter<T, CB::Components>>
-                    + FullEthApiServer
-                    + AddDevSigners,
-    >,
+    AO: RethRpcAddOns<NodeAdapter<T, CB::Components>>,
 {
     type Node = NodeHandle<NodeAdapter<T, CB::Components>, AO>;
 
@@ -133,7 +122,7 @@ where
         let NodeBuilderWithComponents {
             adapter: NodeTypesAdapter { database },
             components_builder,
-            add_ons: AddOns { hooks, rpc, exexs: installed_exex, .. },
+            add_ons: AddOns { hooks, exexs: installed_exex, add_ons },
             config,
         } = target;
         let NodeHooks { on_component_initialized, on_node_started, .. } = hooks;
@@ -287,7 +276,7 @@ where
             )?;
             #[cfg(feature = "bsc")]
             {
-                let engine_rx = ctx.node_adapter().components.network().get_to_engine_rx();
+                let engine_rx = ctx.components().network().get_to_engine_rx();
                 let client = ParliaEngineBuilder::new(
                     ctx.chain_spec(),
                     ctx.blockchain_db().clone(),
@@ -364,25 +353,6 @@ where
             ),
         );
 
-        let client = ClientVersionV1 {
-            code: CLIENT_CODE,
-            name: NAME_CLIENT.to_string(),
-            version: CARGO_PKG_VERSION.to_string(),
-            commit: VERGEN_GIT_SHA.to_string(),
-        };
-        let engine_api = EngineApi::new(
-            ctx.blockchain_db().clone(),
-            ctx.chain_spec(),
-            beacon_engine_handle,
-            ctx.components().payload_builder().clone().into(),
-            ctx.components().pool().clone(),
-            Box::new(ctx.task_executor().clone()),
-            client,
-            EngineCapabilities::default(),
-            ctx.components().engine_validator().clone(),
-        );
-        info!(target: "reth::cli", "Engine API handler initialized");
-
         // extract the jwt secret from the args if possible
         let jwt_secret = ctx.auth_jwt_secret()?;
 
@@ -392,21 +362,16 @@ where
         let bsc_trace_helper =
             Some(BscTraceHelper::new(Arc::new(ctx.components().parlia().clone())));
 
-        // Start RPC servers
-        let (rpc_server_handles, rpc_registry) = crate::rpc::launch_rpc_servers(
-            ctx.node_adapter().clone(),
-            engine_api,
-            ctx.node_config(),
+        let add_ons_ctx = AddOnsContext {
+            node: ctx.node_adapter().clone(),
+            config: ctx.node_config(),
+            beacon_engine_handle,
             jwt_secret,
-            rpc,
             bsc_trace_helper,
-        )
-        .await?;
+        };
 
-        // in dev mode we generate 20 random dev-signer accounts
-        if ctx.is_dev() {
-            rpc_registry.eth_api().with_dev_accounts();
-        }
+        let RpcHandle { rpc_server_handles, rpc_registry } =
+            add_ons.launch_add_ons(add_ons_ctx).await?;
 
         // Run consensus engine to completion
         let (tx, rx) = oneshot::channel();
@@ -466,13 +431,12 @@ where
             provider: ctx.node_adapter().provider.clone(),
             payload_builder: ctx.components().payload_builder().clone(),
             task_executor: ctx.task_executor().clone(),
-            rpc_server_handles,
-            rpc_registry,
             config: ctx.node_config().clone(),
             data_dir: ctx.data_dir().clone(),
+            add_ons_handle: RpcHandle { rpc_server_handles, rpc_registry },
         };
         // Notify on node started
-        on_node_started.on_event(full_node.clone())?;
+        on_node_started.on_event(FullNode::clone(&full_node))?;
 
         let handle = NodeHandle {
             node_exit_future: NodeExitFuture::new(

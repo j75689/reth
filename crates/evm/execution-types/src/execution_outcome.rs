@@ -1,7 +1,8 @@
 use crate::BlockExecutionOutput;
+use alloy_eips::eip7685::Requests;
 use alloy_primitives::{Address, BlockNumber, Bloom, Log, B256, U256};
 use reth_primitives::{
-    logs_bloom, parlia::Snapshot, Account, Bytecode, Receipt, Receipts, Requests, StorageEntry,
+    logs_bloom, parlia::Snapshot, Account, Bytecode, Receipt, Receipts, StorageEntry,
 };
 use reth_trie::HashedPostState;
 use revm::{
@@ -186,7 +187,7 @@ impl ExecutionOutcome {
     }
 
     /// Transform block number to the index of block.
-    fn block_number_to_index(&self, block_number: BlockNumber) -> Option<usize> {
+    pub fn block_number_to_index(&self, block_number: BlockNumber) -> Option<usize> {
         if self.first_block > block_number {
             return None
         }
@@ -376,7 +377,7 @@ impl From<(BlockExecutionOutput<Receipt>, BlockNumber)> for ExecutionOutcome {
             bundle: value.0.state,
             receipts: Receipts::from(value.0.receipts),
             first_block: value.1,
-            requests: vec![Requests::from(value.0.requests)],
+            requests: vec![value.0.requests],
             snapshots: vec![value.0.snapshot.unwrap_or_default()],
         }
     }
@@ -385,12 +386,15 @@ impl From<(BlockExecutionOutput<Receipt>, BlockNumber)> for ExecutionOutcome {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloy_eips::{eip6110::DepositRequest, eip7002::WithdrawalRequest};
-    use alloy_primitives::{Address, FixedBytes, LogData, B256};
-    use reth_primitives::{Receipts, Request, Requests, TxType};
-    use std::collections::HashMap;
+    #[cfg(not(feature = "optimism"))]
+    use alloy_primitives::bytes;
+    use alloy_primitives::{Address, B256};
+    use reth_primitives::Receipts;
+    #[cfg(not(feature = "optimism"))]
+    use reth_primitives::{LogData, TxType};
 
     #[test]
+    #[cfg(not(feature = "optimism"))]
     fn test_initialisation() {
         // Create a new BundleState object with initial data
         let bundle = BundleState::new(
@@ -406,36 +410,11 @@ mod tests {
                 cumulative_gas_used: 46913,
                 logs: vec![],
                 success: true,
-                #[cfg(feature = "optimism")]
-                deposit_nonce: Some(18),
-                #[cfg(feature = "optimism")]
-                deposit_receipt_version: Some(34),
             })]],
         };
 
-        // Create a Requests object with a vector of requests, including DepositRequest and
-        // WithdrawalRequest
-        let requests = vec![Requests(vec![
-            Request::DepositRequest(DepositRequest {
-                pubkey: FixedBytes::<48>::from([1; 48]),
-                withdrawal_credentials: B256::from([0; 32]),
-                amount: 1111,
-                signature: FixedBytes::<96>::from([2; 96]),
-                index: 222,
-            }),
-            Request::DepositRequest(DepositRequest {
-                pubkey: FixedBytes::<48>::from([23; 48]),
-                withdrawal_credentials: B256::from([0; 32]),
-                amount: 34343,
-                signature: FixedBytes::<96>::from([43; 96]),
-                index: 1212,
-            }),
-            Request::WithdrawalRequest(WithdrawalRequest {
-                source_address: Address::from([1; 20]),
-                validator_pubkey: FixedBytes::<48>::from([10; 48]),
-                amount: 72,
-            }),
-        ])];
+        // Create a Requests object with a vector of requests
+        let requests = vec![Requests::new(vec![bytes!("dead"), bytes!("beef"), bytes!("beebee")])];
 
         // Define the first block number
         let first_block = 123;
@@ -485,6 +464,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "optimism"))]
     fn test_block_number_to_index() {
         // Create a Receipts object with a vector of receipt vectors
         let receipts = Receipts {
@@ -493,10 +473,6 @@ mod tests {
                 cumulative_gas_used: 46913,
                 logs: vec![],
                 success: true,
-                #[cfg(feature = "optimism")]
-                deposit_nonce: Some(18),
-                #[cfg(feature = "optimism")]
-                deposit_receipt_version: Some(34),
             })]],
         };
 
@@ -524,6 +500,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "optimism"))]
     fn test_get_logs() {
         // Create a Receipts object with a vector of receipt vectors
         let receipts = Receipts {
@@ -532,10 +509,6 @@ mod tests {
                 cumulative_gas_used: 46913,
                 logs: vec![Log::<LogData>::default()],
                 success: true,
-                #[cfg(feature = "optimism")]
-                deposit_nonce: Some(18),
-                #[cfg(feature = "optimism")]
-                deposit_receipt_version: Some(34),
             })]],
         };
 
@@ -560,6 +533,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "optimism"))]
     fn test_receipts_by_block() {
         // Create a Receipts object with a vector of receipt vectors
         let receipts = Receipts {
@@ -568,10 +542,6 @@ mod tests {
                 cumulative_gas_used: 46913,
                 logs: vec![Log::<LogData>::default()],
                 success: true,
-                #[cfg(feature = "optimism")]
-                deposit_nonce: Some(18),
-                #[cfg(feature = "optimism")]
-                deposit_receipt_version: Some(34),
             })]],
         };
 
@@ -599,15 +569,12 @@ mod tests {
                 cumulative_gas_used: 46913,
                 logs: vec![Log::<LogData>::default()],
                 success: true,
-                #[cfg(feature = "optimism")]
-                deposit_nonce: Some(18),
-                #[cfg(feature = "optimism")]
-                deposit_receipt_version: Some(34),
             })]
         );
     }
 
     #[test]
+    #[cfg(not(feature = "optimism"))]
     fn test_receipts_len() {
         // Create a Receipts object with a vector of receipt vectors
         let receipts = Receipts {
@@ -616,10 +583,6 @@ mod tests {
                 cumulative_gas_used: 46913,
                 logs: vec![Log::<LogData>::default()],
                 success: true,
-                #[cfg(feature = "optimism")]
-                deposit_nonce: Some(18),
-                #[cfg(feature = "optimism")]
-                deposit_receipt_version: Some(34),
             })]],
         };
 
@@ -662,6 +625,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "optimism"))]
     fn test_revert_to() {
         // Create a random receipt object
         let receipt = Receipt {
@@ -669,10 +633,6 @@ mod tests {
             cumulative_gas_used: 46913,
             logs: vec![],
             success: true,
-            #[cfg(feature = "optimism")]
-            deposit_nonce: Some(18),
-            #[cfg(feature = "optimism")]
-            deposit_receipt_version: Some(34),
         };
 
         // Create a Receipts object with a vector of receipt vectors
@@ -683,17 +643,12 @@ mod tests {
         // Define the first block number
         let first_block = 123;
 
-        // Create a DepositRequest object with specific attributes.
-        let request = Request::DepositRequest(DepositRequest {
-            pubkey: FixedBytes::<48>::from([1; 48]),
-            withdrawal_credentials: B256::from([0; 32]),
-            amount: 1111,
-            signature: FixedBytes::<96>::from([2; 96]),
-            index: 222,
-        });
+        // Create a request.
+        let request = bytes!("deadbeef");
 
         // Create a vector of Requests containing the request.
-        let requests = vec![Requests(vec![request]), Requests(vec![request])];
+        let requests =
+            vec![Requests::new(vec![request.clone()]), Requests::new(vec![request.clone()])];
 
         // Create a ExecutionOutcome object with the created bundle, receipts, requests, and
         // first_block
@@ -712,7 +667,7 @@ mod tests {
         assert_eq!(exec_res.receipts, Receipts { receipt_vec: vec![vec![Some(receipt)]] });
 
         // Assert that the requests are properly cut after reverting to the initial block number.
-        assert_eq!(exec_res.requests, vec![Requests(vec![request])]);
+        assert_eq!(exec_res.requests, vec![Requests::new(vec![request])]);
 
         // Assert that the revert_to method returns false when attempting to revert to a block
         // number greater than the initial block number.
@@ -724,6 +679,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "optimism"))]
     fn test_extend_execution_outcome() {
         // Create a Receipt object with specific attributes.
         let receipt = Receipt {
@@ -731,26 +687,16 @@ mod tests {
             cumulative_gas_used: 46913,
             logs: vec![],
             success: true,
-            #[cfg(feature = "optimism")]
-            deposit_nonce: Some(18),
-            #[cfg(feature = "optimism")]
-            deposit_receipt_version: Some(34),
         };
 
         // Create a Receipts object containing the receipt.
         let receipts = Receipts { receipt_vec: vec![vec![Some(receipt.clone())]] };
 
-        // Create a DepositRequest object with specific attributes.
-        let request = Request::DepositRequest(DepositRequest {
-            pubkey: FixedBytes::<48>::from([1; 48]),
-            withdrawal_credentials: B256::from([0; 32]),
-            amount: 1111,
-            signature: FixedBytes::<96>::from([2; 96]),
-            index: 222,
-        });
+        // Create a request.
+        let request = bytes!("deadbeef");
 
         // Create a vector of Requests containing the request.
-        let requests = vec![Requests(vec![request])];
+        let requests = vec![Requests::new(vec![request.clone()])];
 
         // Define the initial block number.
         let first_block = 123;
@@ -775,7 +721,7 @@ mod tests {
                 receipts: Receipts {
                     receipt_vec: vec![vec![Some(receipt.clone())], vec![Some(receipt)]]
                 },
-                requests: vec![Requests(vec![request]), Requests(vec![request])],
+                requests: vec![Requests::new(vec![request.clone()]), Requests::new(vec![request])],
                 first_block: 123,
                 snapshots: vec![],
             }
@@ -783,6 +729,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "optimism"))]
     fn test_split_at_execution_outcome() {
         // Create a random receipt object
         let receipt = Receipt {
@@ -790,10 +737,6 @@ mod tests {
             cumulative_gas_used: 46913,
             logs: vec![],
             success: true,
-            #[cfg(feature = "optimism")]
-            deposit_nonce: Some(18),
-            #[cfg(feature = "optimism")]
-            deposit_receipt_version: Some(34),
         };
 
         // Create a Receipts object with a vector of receipt vectors
@@ -808,18 +751,15 @@ mod tests {
         // Define the first block number
         let first_block = 123;
 
-        // Create a DepositRequest object with specific attributes.
-        let request = Request::DepositRequest(DepositRequest {
-            pubkey: FixedBytes::<48>::from([1; 48]),
-            withdrawal_credentials: B256::from([0; 32]),
-            amount: 1111,
-            signature: FixedBytes::<96>::from([2; 96]),
-            index: 222,
-        });
+        // Create a request.
+        let request = bytes!("deadbeef");
 
         // Create a vector of Requests containing the request.
-        let requests =
-            vec![Requests(vec![request]), Requests(vec![request]), Requests(vec![request])];
+        let requests = vec![
+            Requests::new(vec![request.clone()]),
+            Requests::new(vec![request.clone()]),
+            Requests::new(vec![request.clone()]),
+        ];
 
         // Create a ExecutionOutcome object with the created bundle, receipts, requests, and
         // first_block
@@ -838,7 +778,7 @@ mod tests {
         let lower_execution_outcome = ExecutionOutcome {
             bundle: Default::default(),
             receipts: Receipts { receipt_vec: vec![vec![Some(receipt.clone())]] },
-            requests: vec![Requests(vec![request])],
+            requests: vec![Requests::new(vec![request.clone()])],
             first_block,
             snapshots: vec![],
         };
@@ -849,7 +789,7 @@ mod tests {
             receipts: Receipts {
                 receipt_vec: vec![vec![Some(receipt.clone())], vec![Some(receipt)]],
             },
-            requests: vec![Requests(vec![request]), Requests(vec![request])],
+            requests: vec![Requests::new(vec![request.clone()]), Requests::new(vec![request])],
             first_block: 124,
             snapshots: vec![],
         };

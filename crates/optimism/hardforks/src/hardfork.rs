@@ -39,6 +39,8 @@ hardfork!(
         Fjord,
         /// Granite: <https://github.com/ethereum-optimism/specs/blob/main/specs/protocol/superchain-upgrades.md#granite>
         Granite,
+        /// Holocene: <https://github.com/ethereum-optimism/specs/blob/main/specs/protocol/superchain-upgrades.md#holocene>
+        Holocene,
     }
 );
 

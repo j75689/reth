@@ -31,8 +31,7 @@ use reth_db_api::{
     table::{Decode, DupSort, Encode, Table},
 };
 use reth_primitives::{
-    parlia::Snapshot, Account, Bytecode, Header, Receipt, Requests, StorageEntry,
-    TransactionSignedNoHash,
+    parlia::Snapshot, Account, Bytecode, Header, Receipt, StorageEntry, TransactionSignedNoHash,
 };
 use reth_primitives_traits::{BlobSidecars, IntegerList};
 use reth_prune_types::{PruneCheckpoint, PruneSegment};
@@ -407,9 +406,6 @@ tables! {
 
     /// Stores the history of client versions that have accessed the database with write privileges by unix timestamp in seconds.
     table VersionHistory<Key = u64, Value = ClientVersion>;
-
-    /// Stores EIP-7685 EL -> CL requests, indexed by block number.
-    table BlockRequests<Key = BlockNumber, Value = Requests>;
 
     /// Stores generic chain state info, like the last finalized block.
     table ChainState<Key = ChainStateKey, Value = BlockNumber>;

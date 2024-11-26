@@ -5,16 +5,9 @@
 // The `bsc` feature must be enabled to use this crate.
 #![cfg(feature = "bsc")]
 
-use std::{
-    clone::Clone,
-    collections::{HashMap, VecDeque},
-    fmt::Debug,
-    marker::PhantomData,
-    sync::Arc,
-};
-
+use alloy_eips::BlockHashOrNumber;
 use alloy_primitives::{BlockHash, BlockNumber, B256};
-use alloy_rpc_types::engine::{
+pub use alloy_rpc_types_engine::{
     ExecutionPayloadEnvelopeV2, ExecutionPayloadEnvelopeV3, ExecutionPayloadEnvelopeV4,
     ExecutionPayloadV1, PayloadAttributes,
 };
@@ -29,8 +22,15 @@ use reth_engine_primitives::{
 };
 use reth_network_api::events::EngineMessage;
 use reth_network_p2p::BlockClient;
-use reth_primitives::{BlockBody, BlockHashOrNumber, SealedHeader};
+use reth_primitives::{BlockBody, SealedHeader};
 use reth_provider::{BlockReaderIdExt, CanonChainTracker, ParliaProvider};
+use std::{
+    clone::Clone,
+    collections::{HashMap, VecDeque},
+    fmt::Debug,
+    marker::PhantomData,
+    sync::Arc,
+};
 use tokio::sync::{
     mpsc::{UnboundedReceiver, UnboundedSender},
     Mutex, RwLockReadGuard, RwLockWriteGuard,
@@ -65,10 +65,10 @@ where
         + TryInto<ExecutionPayloadEnvelopeV3>
         + TryInto<ExecutionPayloadEnvelopeV4>,
 {
-    type ExecutionPayloadV1 = ExecutionPayloadV1;
-    type ExecutionPayloadV2 = ExecutionPayloadEnvelopeV2;
-    type ExecutionPayloadV3 = ExecutionPayloadEnvelopeV3;
-    type ExecutionPayloadV4 = ExecutionPayloadEnvelopeV4;
+    type ExecutionPayloadEnvelopeV1 = ExecutionPayloadV1;
+    type ExecutionPayloadEnvelopeV2 = ExecutionPayloadEnvelopeV2;
+    type ExecutionPayloadEnvelopeV3 = ExecutionPayloadEnvelopeV3;
+    type ExecutionPayloadEnvelopeV4 = ExecutionPayloadEnvelopeV4;
 }
 
 /// A default payload type for [`BscEngineTypes`]

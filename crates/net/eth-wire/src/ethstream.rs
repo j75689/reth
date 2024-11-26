@@ -23,6 +23,9 @@ use tracing::{debug, trace};
 // https://github.com/ethereum/go-ethereum/blob/30602163d5d8321fbc68afdcbbaf2362b2641bde/eth/protocols/eth/protocol.go#L50
 pub const MAX_MESSAGE_SIZE: usize = 10 * 1024 * 1024;
 
+/// [`MAX_STATUS_SIZE`] is the maximum cap on the size of the initial status message
+pub(crate) const MAX_STATUS_SIZE: usize = 500 * 1024;
+
 /// An un-authenticated [`EthStream`]. This is consumed and returns a [`EthStream`] after the
 /// `Status` handshake is completed.
 #[pin_project]
@@ -99,12 +102,12 @@ where
             }
         }?;
 
-        if their_msg.len() > MAX_MESSAGE_SIZE {
+        if their_msg.len() > MAX_STATUS_SIZE {
             self.inner.disconnect(DisconnectReason::ProtocolBreach).await?;
             return Err(EthStreamError::MessageTooBig(their_msg.len()));
         }
 
-        let version = EthVersion::try_from(status.version)?;
+        let version = status.version;
         let msg = match ProtocolMessage::decode_message(version, &mut their_msg.as_ref()) {
             Ok(m) => m,
             Err(err) => {
@@ -432,7 +435,7 @@ mod tests {
         let fork_filter = ForkFilter::new(Head::default(), genesis, 0, Vec::new());
 
         let status = Status {
-            version: EthVersion::Eth67 as u8,
+            version: EthVersion::Eth67,
             chain: NamedChain::Mainnet.into(),
             total_difficulty: U256::ZERO,
             blockhash: B256::random(),
@@ -479,7 +482,7 @@ mod tests {
         let fork_filter = ForkFilter::new(Head::default(), genesis, 0, Vec::new());
 
         let status = Status {
-            version: EthVersion::Eth67 as u8,
+            version: EthVersion::Eth67,
             chain: NamedChain::Mainnet.into(),
             total_difficulty: U256::from(2).pow(U256::from(100)) - U256::from(1),
             blockhash: B256::random(),
@@ -526,7 +529,7 @@ mod tests {
         let fork_filter = ForkFilter::new(Head::default(), genesis, 0, Vec::new());
 
         let status = Status {
-            version: EthVersion::Eth67 as u8,
+            version: EthVersion::Eth67,
             chain: NamedChain::Mainnet.into(),
             total_difficulty: U256::from(2).pow(U256::from(100)),
             blockhash: B256::random(),
@@ -667,7 +670,7 @@ mod tests {
         let fork_filter = ForkFilter::new(Head::default(), genesis, 0, Vec::new());
 
         let status = Status {
-            version: EthVersion::Eth67 as u8,
+            version: EthVersion::Eth67,
             chain: NamedChain::Mainnet.into(),
             total_difficulty: U256::ZERO,
             blockhash: B256::random(),
@@ -738,7 +741,7 @@ mod tests {
         let fork_filter = ForkFilter::new(Head::default(), genesis, 0, Vec::new());
 
         let status = Status {
-            version: EthVersion::Eth67 as u8,
+            version: EthVersion::Eth67,
             chain: NamedChain::Mainnet.into(),
             total_difficulty: U256::ZERO,
             blockhash: B256::random(),

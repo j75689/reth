@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 
 use alloy_chains::Chain;
+use alloy_consensus::Transaction;
 use alloy_primitives::{hex, Address, BlockNumber};
 use include_dir::{include_dir, Dir};
 use lazy_static::lazy_static;

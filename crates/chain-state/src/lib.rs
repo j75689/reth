@@ -22,7 +22,7 @@ pub use notifications::{
 };
 
 mod memory_overlay;
-pub use memory_overlay::MemoryOverlayStateProvider;
+pub use memory_overlay::{MemoryOverlayStateProvider, MemoryOverlayStateProviderRef};
 
 pub use cache::cached_provider::CachedStateProvider;
 
