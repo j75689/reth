@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.1.0
+
+This release merges with upstream version v1.1.1, including several bug fixes.
+
+**Key changes:**
+
+* **Compatibility:** This version is compatible with the BSC mainnet, testnet, and opBNB mainnet, testnet.
+* **Bug fixes:**  Several bug fixes are included in this release. For detailed code changes: [v1.0.7...v1.1.0](https://github.com/bnb-chain/reth/compare/v1.0.7...v1.1.0)
+
 ## v1.0.7
 
 This is a hotfix release for the BSC/opBNB mainnet and testnet.
