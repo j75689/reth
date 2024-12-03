@@ -10,7 +10,7 @@ on:
   merge_group:
 
 env:
-  TOOL_CHAIN: "1.81"
+  TOOL_CHAIN: "1.82"
 
 jobs:
   check-reth:

@@ -35,11 +35,13 @@ reth-bsc-evm.workspace = true
 reth-bsc-payload-builder.workspace = true
 
 # eth
+alloy-eips.workspace = true
 alloy-primitives.workspace = true
 alloy-rlp.workspace = true
 alloy-rpc-types.workspace = true
 alloy-dyn-abi.workspace = true
 alloy-json-abi.workspace = true
+alloy-rpc-types-engine.workspace = true
 
 # crypto
 secp256k1.workspace = true

@@ -3,7 +3,7 @@
 name: docker
 
 on:
-  workflow_dispatch: { }
+  workflow_dispatch: {}
   push:
     tags:
       - v*
@@ -18,7 +18,7 @@ env:
   OP_DOCKER_IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/op-reth
   BSC_DOCKER_IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/bsc-reth
   DOCKER_USERNAME: ${{ github.actor }}
-  TOOL_CHAIN: "1.81"
+  TOOL_CHAIN: "1.82"
 
 jobs:
   build:

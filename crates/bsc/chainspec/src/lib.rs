@@ -65,8 +65,8 @@ impl EthChainSpec for BscChainSpec {
         self.inner.prune_delete_limit()
     }
 
-    fn display_hardforks(&self) -> impl Display {
-        self.inner.display_hardforks()
+    fn display_hardforks(&self) -> Box<dyn Display> {
+        Box::new(self.inner.display_hardforks())
     }
 
     fn genesis_header(&self) -> &Header {

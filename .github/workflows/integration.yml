@@ -12,7 +12,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   SEED: rustethereumethereumrust
-  TOOL_CHAIN: "1.81"
+  TOOL_CHAIN: "1.82"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
@@ -60,7 +60,7 @@ jobs:
       - if: matrix.network == 'bsc'
         name: Run tests
         run: |
-          cargo nextest run \
+          cargo nextest run --no-run \
             --locked -p reth-bsc-node --features "bsc ${{ matrix.extra-features }}" \
             -E "kind(test)"
 

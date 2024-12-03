@@ -113,9 +113,10 @@ mod tests {
         HeadersDirection,
     };
     use alloy_consensus::TxLegacy;
-    use alloy_primitives::{hex, Parity, TxKind, U256};
+    use alloy_eips::BlockHashOrNumber;
+    use alloy_primitives::{hex, Parity, Signature, TxKind, U256};
     use alloy_rlp::{Decodable, Encodable};
-    use reth_primitives::{BlockHashOrNumber, Header, Signature, Transaction, TransactionSigned};
+    use reth_primitives::{Header, Transaction, TransactionSigned};
     use std::str::FromStr;
 
     use super::BlockBody;
@@ -277,7 +278,7 @@ mod tests {
                     blob_gas_used: None,
                     excess_blob_gas: None,
                     parent_beacon_block_root: None,
-                    requests_root: None
+                    requests_hash: None
                 },
             ]),
         }.encode(&mut data);
@@ -312,7 +313,7 @@ mod tests {
                     blob_gas_used: None,
                     excess_blob_gas: None,
                     parent_beacon_block_root: None,
-                    requests_root: None
+                    requests_hash: None
                 },
             ]),
         };
@@ -412,12 +413,11 @@ mod tests {
                             blob_gas_used: None,
                             excess_blob_gas: None,
                             parent_beacon_block_root: None,
-                            requests_root: None
+                            requests_hash: None
                         },
                     ],
                     withdrawals: None,
                     sidecars: None,
-                    requests: None
                 }
             ]),
         };
@@ -489,16 +489,24 @@ mod tests {
                             blob_gas_used: None,
                             excess_blob_gas: None,
                             parent_beacon_block_root: None,
-                            requests_root: None
+                            requests_hash: None
                         },
                     ],
                     withdrawals: None,
                     sidecars: None,
-                    requests: None
                 }
             ]),
         };
         let result = RequestPair::decode(&mut &data[..]).unwrap();
         assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn empty_block_bodies_rlp() {
+        let body = BlockBodies::default();
+        let mut buf = Vec::new();
+        body.encode(&mut buf);
+        let decoded = BlockBodies::decode(&mut buf.as_slice()).unwrap();
+        assert_eq!(body, decoded);
     }
 }

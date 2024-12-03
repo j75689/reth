@@ -2,15 +2,17 @@
 
 use crate::{
     execute::{
-        BatchExecutor, BlockExecutionInput, BlockExecutionOutput, BlockExecutorProvider, Executor,
+        BasicBatchExecutor, BasicBlockExecutor, BatchExecutor, BlockExecutionInput,
+        BlockExecutionOutput, BlockExecutionStrategy, BlockExecutorProvider, Executor,
     },
     system_calls::OnStateHook,
 };
+use alloy_eips::eip7685::Requests;
 use alloy_primitives::BlockNumber;
 use parking_lot::Mutex;
 use reth_execution_errors::BlockExecutionError;
 use reth_execution_types::ExecutionOutcome;
-use reth_primitives::{BlockWithSenders, Header, Receipt};
+use reth_primitives::{BlockWithSenders, Header, Receipt, Receipts};
 use reth_prune_types::PruneModes;
 use reth_storage_errors::provider::ProviderError;
 use revm::State;
@@ -43,7 +45,11 @@ impl BlockExecutorProvider for MockExecutorProvider {
         self.clone()
     }
 
-    fn batch_executor<DB>(&self, _: DB) -> Self::BatchExecutor<DB>
+    fn batch_executor<DB>(
+        &self,
+        _: DB,
+        _: Option<UnboundedSender<EvmState>>,
+    ) -> Self::BatchExecutor<DB>
     where
         DB: Database<Error: Into<ProviderError> + Display>,
     {
@@ -62,7 +68,10 @@ impl<DB> Executor<DB> for MockExecutorProvider {
         Ok(BlockExecutionOutput {
             state: bundle,
             receipts: receipts.into_iter().flatten().flatten().collect(),
-            requests: requests.into_iter().flatten().collect(),
+            requests: requests.into_iter().fold(Requests::default(), |mut reqs, req| {
+                reqs.extend(req);
+                reqs
+            }),
             gas_used: 0,
             snapshot: None,
         })
@@ -110,5 +119,54 @@ impl<DB> BatchExecutor<DB> for MockExecutorProvider {
 
     fn size_hint(&self) -> Option<usize> {
         None
+    }
+}
+
+impl<S, DB> BasicBlockExecutor<S, DB>
+where
+    S: BlockExecutionStrategy<DB>,
+    DB: Database,
+{
+    /// Provides safe read access to the state
+    pub fn with_state<F, R>(&self, f: F) -> R
+    where
+        F: FnOnce(&State<DB>) -> R,
+    {
+        f(self.strategy.state_ref())
+    }
+
+    /// Provides safe write access to the state
+    pub fn with_state_mut<F, R>(&mut self, f: F) -> R
+    where
+        F: FnOnce(&mut State<DB>) -> R,
+    {
+        f(self.strategy.state_mut())
+    }
+}
+
+impl<S, DB> BasicBatchExecutor<S, DB>
+where
+    S: BlockExecutionStrategy<DB>,
+    DB: Database,
+{
+    /// Provides safe read access to the state
+    pub fn with_state<F, R>(&self, f: F) -> R
+    where
+        F: FnOnce(&State<DB>) -> R,
+    {
+        f(self.strategy.state_ref())
+    }
+
+    /// Provides safe write access to the state
+    pub fn with_state_mut<F, R>(&mut self, f: F) -> R
+    where
+        F: FnOnce(&mut State<DB>) -> R,
+    {
+        f(self.strategy.state_mut())
+    }
+
+    /// Accessor for batch executor receipts.
+    pub const fn receipts(&self) -> &Receipts {
+        self.batch_record.receipts()
     }
 }

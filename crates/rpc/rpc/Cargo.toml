@@ -18,6 +18,7 @@ reth-primitives = { workspace = true, features = ["secp256k1"] }
 reth-rpc-api.workspace = true
 reth-rpc-eth-api.workspace = true
 reth-errors.workspace = true
+reth-ethereum-consensus.workspace = true
 reth-provider.workspace = true
 reth-transaction-pool.workspace = true
 reth-network-api.workspace = true
@@ -31,9 +32,10 @@ reth-network-peers = { workspace = true, features = ["secp256k1"] }
 reth-evm.workspace = true
 reth-rpc-eth-types.workspace = true
 reth-rpc-server-types.workspace = true
-reth-node-api.workspace = true
 reth-network-types.workspace = true
 reth-trie.workspace = true
+reth-consensus.workspace = true
+reth-payload-validator.workspace = true
 
 # bsc-reth
 reth-bsc-primitives.workspace = true
@@ -43,13 +45,14 @@ reth-bsc-consensus.workspace = true
 alloy-consensus.workspace = true
 alloy-signer.workspace = true
 alloy-signer-local.workspace = true
-alloy-eips.workspace = true
+alloy-eips = { workspace = true, features = ["kzg"] }
 alloy-dyn-abi.workspace = true
 alloy-genesis.workspace = true
 alloy-network.workspace = true
 alloy-primitives.workspace = true
 alloy-rlp.workspace = true
 alloy-rpc-types.workspace = true
+alloy-rpc-types-beacon.workspace = true
 alloy-rpc-types-eth = { workspace = true, features = ["jsonrpsee-types"] }
 alloy-rpc-types-debug.workspace = true
 alloy-rpc-types-trace.workspace = true
@@ -104,9 +107,4 @@ jsonrpsee = { workspace = true, features = ["client"] }
 js-tracer = ["revm-inspectors/js-tracer", "reth-rpc-eth-types/js-tracer"]
 bsc = [
     "reth-rpc-eth-api/bsc",
-]
-optimism = [
-    "reth-primitives/optimism",
-    "reth-provider/optimism",
-    "reth-revm/optimism",
 ]

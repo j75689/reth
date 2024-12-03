@@ -16,6 +16,9 @@ use std::{
 
 const EXTENSION: &str = "toml";
 
+/// The default prune block interval
+pub const DEFAULT_BLOCK_INTERVAL: usize = 5;
+
 /// Configuration for the reth node.
 #[derive(Debug, Clone, Default, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(default)]
@@ -390,7 +393,11 @@ pub struct PruneConfig {
 
 impl Default for PruneConfig {
     fn default() -> Self {
-        Self { block_interval: 5, recent_sidecars_kept_blocks: 0, segments: PruneModes::none() }
+        Self {
+            block_interval: DEFAULT_BLOCK_INTERVAL,
+            recent_sidecars_kept_blocks: 0,
+            segments: PruneModes::none(),
+        }
     }
 }
 
@@ -404,27 +411,39 @@ impl PruneConfig {
     /// if the corresponding value in this config is not set.
     pub fn merge(&mut self, other: Option<Self>) {
         let Some(other) = other else { return };
+        let Self {
+            block_interval,
+            recent_sidecars_kept_blocks,
+            segments:
+                PruneModes {
+                    sender_recovery,
+                    transaction_lookup,
+                    receipts,
+                    account_history,
+                    storage_history,
+                    receipts_log_filter,
+                },
+        } = other;
 
-        // Merge block_interval
-        if self.block_interval == 0 {
-            self.block_interval = other.block_interval;
+        // Merge block_interval, only update if it's the default interval
+        if self.block_interval == DEFAULT_BLOCK_INTERVAL {
+            self.block_interval = block_interval;
+        }
+
+        // Merge recent_sidecars_kept_blocks, only update if it's the default number of blocks
+        if self.recent_sidecars_kept_blocks == 0 {
+            self.recent_sidecars_kept_blocks = recent_sidecars_kept_blocks;
         }
 
         // Merge the various segment prune modes
-        self.segments.sender_recovery =
-            self.segments.sender_recovery.or(other.segments.sender_recovery);
-        self.segments.transaction_lookup =
-            self.segments.transaction_lookup.or(other.segments.transaction_lookup);
-        self.segments.receipts = self.segments.receipts.or(other.segments.receipts);
-        self.segments.account_history =
-            self.segments.account_history.or(other.segments.account_history);
-        self.segments.storage_history =
-            self.segments.storage_history.or(other.segments.storage_history);
+        self.segments.sender_recovery = self.segments.sender_recovery.or(sender_recovery);
+        self.segments.transaction_lookup = self.segments.transaction_lookup.or(transaction_lookup);
+        self.segments.receipts = self.segments.receipts.or(receipts);
+        self.segments.account_history = self.segments.account_history.or(account_history);
+        self.segments.storage_history = self.segments.storage_history.or(storage_history);
 
-        if self.segments.receipts_log_filter.0.is_empty() &&
-            !other.segments.receipts_log_filter.0.is_empty()
-        {
-            self.segments.receipts_log_filter = other.segments.receipts_log_filter;
+        if self.segments.receipts_log_filter.0.is_empty() && !receipts_log_filter.0.is_empty() {
+            self.segments.receipts_log_filter = receipts_log_filter;
         }
     }
 }
@@ -970,7 +989,7 @@ receipts = 'full'
 
         // Check that the configuration has been merged. Any configuration present in config1
         // should not be overwritten by config2
-        assert_eq!(config1.block_interval, 5);
+        assert_eq!(config1.block_interval, 10);
         assert_eq!(config1.segments.sender_recovery, Some(PruneMode::Full));
         assert_eq!(config1.segments.transaction_lookup, Some(PruneMode::Full));
         assert_eq!(config1.segments.receipts, Some(PruneMode::Distance(1000)));
@@ -1010,9 +1029,9 @@ connect_trusted_nodes_only = true
         assert_eq!(conf.peers.trusted_nodes.len(), 2);
 
         let expected_enodes = vec![
-        "enode://0401e494dbd0c84c5c0f72adac5985d2f2525e08b68d448958aae218f5ac8198a80d1498e0ebec2ce38b1b18d6750f6e61a56b4614c5a6c6cf0981c39aed47dc@34.159.32.127:30303",
-        "enode://e9675164b5e17b9d9edf0cc2bd79e6b6f487200c74d1331c220abb5b8ee80c2eefbf18213989585e9d0960683e819542e11d4eefb5f2b4019e1e49f9fd8fff18@berav2-bootnode.staketab.org:30303",
-    ];
+            "enode://0401e494dbd0c84c5c0f72adac5985d2f2525e08b68d448958aae218f5ac8198a80d1498e0ebec2ce38b1b18d6750f6e61a56b4614c5a6c6cf0981c39aed47dc@34.159.32.127:30303",
+            "enode://e9675164b5e17b9d9edf0cc2bd79e6b6f487200c74d1331c220abb5b8ee80c2eefbf18213989585e9d0960683e819542e11d4eefb5f2b4019e1e49f9fd8fff18@berav2-bootnode.staketab.org:30303",
+        ];
 
         for enode in expected_enodes {
             let node = TrustedPeer::from_str(enode).unwrap();

@@ -12,7 +12,7 @@ env:
   CARGO_TERM_COLOR: always
   FROM_BLOCK: 0
   TO_BLOCK: 50000
-  TOOL_CHAIN: "1.81"
+  TOOL_CHAIN: "1.82"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}

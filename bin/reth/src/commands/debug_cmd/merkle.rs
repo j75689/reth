@@ -1,5 +1,6 @@
 //! Command for debugging merkle trie calculation.
 use crate::{args::NetworkArgs, utils::get_single_header};
+use alloy_eips::BlockHashOrNumber;
 use backon::{ConstantBuilder, Retryable};
 use clap::Parser;
 use reth_beacon_consensus::EthBeaconConsensus;
@@ -18,7 +19,6 @@ use reth_network_api::NetworkInfo;
 use reth_network_p2p::full_block::FullBlockClient;
 use reth_node_api::{NodeTypesWithDB, NodeTypesWithEngine};
 use reth_node_ethereum::EthExecutorProvider;
-use reth_primitives::BlockHashOrNumber;
 use reth_provider::{
     writer::UnifiedStorageWriter, BlockNumReader, BlockWriter, ChainSpecProvider,
     DatabaseProviderFactory, HeaderProvider, LatestStateProviderRef, OriginalValuesKnown,
@@ -152,12 +152,13 @@ impl<C: ChainSpecParser<ChainSpec = ChainSpec>> Command<C> {
             provider_rw.insert_block(sealed_block.clone())?;
 
             td += sealed_block.difficulty;
-            let mut executor = executor_provider.batch_executor(StateProviderDatabase::new(
-                LatestStateProviderRef::new(
+            let mut executor = executor_provider.batch_executor(
+                StateProviderDatabase::new(LatestStateProviderRef::new(
                     provider_rw.tx_ref(),
                     provider_rw.static_file_provider().clone(),
-                ),
-            ));
+                )),
+                None,
+            );
             executor.execute_and_verify_one((&sealed_block.clone().unseal(), td, None).into())?;
             let execution_outcome = executor.finalize();
 

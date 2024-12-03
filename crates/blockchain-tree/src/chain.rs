@@ -326,7 +326,7 @@ impl AppendableChain {
         let parent_block = self.chain.tip();
 
         let ancestor_blocks =
-            self.headers().map(|h| return (h.hash() as B256, h.header().clone())).collect();
+            self.headers().map(|h| (h.hash() as B256, h.header().clone())).collect();
 
         let bundle_state_data = BundleStateDataRef {
             execution_outcome: self.execution_outcome(),
