@@ -26,7 +26,7 @@ pub static BSC_CHAPEL: Lazy<Arc<BscChainSpec>> = Lazy::new(|| {
             paris_block_and_final_difficulty: Some((0, U256::from(0))),
             hardforks: BscHardfork::bsc_testnet(),
             deposit_contract: None,
-            base_fee_params: BaseFeeParamsKind::Constant(BaseFeeParams::new(1, 1)),
+            base_fee_params: BaseFeeParamsKind::Constant(BaseFeeParams::ethereum()),
             prune_delete_limit: 3500,
             ..Default::default()
         },
