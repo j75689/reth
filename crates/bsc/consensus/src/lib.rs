@@ -529,6 +529,14 @@ impl Parlia {
             return Err(ConsensusError::ParentBeaconBlockRootUnexpected)
         }
 
+        if self.chain_spec.is_prague_active_at_timestamp(header.timestamp) {
+            if header.requests_hash.is_none() {
+                return Err(ConsensusError::RequestsHashMissing)
+            }
+        } else if header.requests_hash.is_some() {
+            return Err(ConsensusError::RequestsHashUnexpected)
+        }
+
         Ok(())
     }
 
@@ -605,7 +613,7 @@ impl Consensus for Parlia {
         block: &BlockWithSenders,
         input: PostExecutionInput<'_>,
     ) -> Result<(), ConsensusError> {
-        validate_block_post_execution_of_bsc(block, &self.chain_spec, input.receipts)
+        validate_block_post_execution_of_bsc(block, &self.chain_spec, input.receipts, input.requests)
     }
 }
 
