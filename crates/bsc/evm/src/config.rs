@@ -10,7 +10,11 @@ pub fn revm_spec_by_timestamp_after_shanghai(
     chain_spec: &ChainSpec,
     timestamp: u64,
 ) -> revm_primitives::SpecId {
-    if chain_spec.fork(BscHardfork::Bohr).active_at_timestamp(timestamp) {
+    if chain_spec.fork(BscHardfork::Pascal).active_at_timestamp(timestamp) ||
+        chain_spec.fork(EthereumHardfork::Prague).active_at_timestamp(timestamp)
+    {
+        revm_primitives::PRAGUE
+    } else if chain_spec.fork(BscHardfork::Bohr).active_at_timestamp(timestamp) {
         revm_primitives::BOHR
     } else if chain_spec.fork(BscHardfork::HaberFix).active_at_timestamp(timestamp) {
         revm_primitives::HABER_FIX
@@ -29,7 +33,11 @@ pub fn revm_spec_by_timestamp_after_shanghai(
 
 /// return `revm_spec` from spec configuration.
 pub fn revm_spec(chain_spec: &ChainSpec, block: &Head) -> revm_primitives::SpecId {
-    if chain_spec.fork(BscHardfork::Bohr).active_at_head(block) {
+    if chain_spec.fork(BscHardfork::Pascal).active_at_head(block) ||
+        chain_spec.fork(EthereumHardfork::Prague).active_at_head(block)
+    {
+        revm_primitives::PRAGUE
+    } else if chain_spec.fork(BscHardfork::Bohr).active_at_head(block) {
         revm_primitives::BOHR
     } else if chain_spec.fork(BscHardfork::HaberFix).active_at_head(block) {
         revm_primitives::HABER_FIX
