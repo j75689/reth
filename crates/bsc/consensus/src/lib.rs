@@ -613,7 +613,7 @@ impl Consensus for Parlia {
         block: &BlockWithSenders,
         input: PostExecutionInput<'_>,
     ) -> Result<(), ConsensusError> {
-        validate_block_post_execution_of_bsc(block, &self.chain_spec, input.receipts, input.requests)
+        validate_block_post_execution_of_bsc(block, &self.chain_spec, input.receipts)
     }
 }
 
