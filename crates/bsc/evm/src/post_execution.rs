@@ -323,6 +323,7 @@ where
         if system_account.account.is_none() ||
             system_account.account.as_ref().unwrap().info.balance == U256::ZERO
         {
+            debug!("system account is empty");
             return Ok(());
         }
 
