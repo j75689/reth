@@ -59,6 +59,8 @@ where
 
         self.verify_turn_length(header, env.clone())?;
 
+        debug!(target: "evm", "system txs before: {:?}", system_txs);
+
         if number == 1 {
             self.init_genesis_contracts(
                 validator,
@@ -145,6 +147,7 @@ where
         }
 
         if !system_txs.is_empty() {
+            debug!(target: "evm", "system txs after: {:?}", system_txs);
             return Err(BscBlockExecutionError::UnexpectedSystemTx.into());
         }
 
