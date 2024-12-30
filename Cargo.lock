@@ -112,7 +112,7 @@ dependencies = [
 [[package]]
 name = "alloy-consensus"
 version = "0.5.4"
-source = "git+https://github.com/bnb-chain/alloy?tag=v1.0.3#576cabc6a05f6e483d10d5d16f69a67da5f0b126"
+source = "git+https://github.com/bnb-chain/alloy?rev=e1e4a2d299350eb4210e89836e2ca8dce81f4004#e1e4a2d299350eb4210e89836e2ca8dce81f4004"
 dependencies = [
  "alloy-eips",
  "alloy-primitives",
@@ -196,7 +196,7 @@ dependencies = [
 [[package]]
 name = "alloy-eips"
 version = "0.5.4"
-source = "git+https://github.com/bnb-chain/alloy?tag=v1.0.3#576cabc6a05f6e483d10d5d16f69a67da5f0b126"
+source = "git+https://github.com/bnb-chain/alloy?rev=e1e4a2d299350eb4210e89836e2ca8dce81f4004#e1e4a2d299350eb4210e89836e2ca8dce81f4004"
 dependencies = [
  "alloy-eip2930",
  "alloy-eip7702",
@@ -227,7 +227,7 @@ dependencies = [
 [[package]]
 name = "alloy-genesis"
 version = "0.5.4"
-source = "git+https://github.com/bnb-chain/alloy?tag=v1.0.3#576cabc6a05f6e483d10d5d16f69a67da5f0b126"
+source = "git+https://github.com/bnb-chain/alloy?rev=e1e4a2d299350eb4210e89836e2ca8dce81f4004#e1e4a2d299350eb4210e89836e2ca8dce81f4004"
 dependencies = [
  "alloy-primitives",
  "alloy-serde",
@@ -249,7 +249,7 @@ dependencies = [
 [[package]]
 name = "alloy-json-rpc"
 version = "0.5.4"
-source = "git+https://github.com/bnb-chain/alloy?tag=v1.0.3#576cabc6a05f6e483d10d5d16f69a67da5f0b126"
+source = "git+https://github.com/bnb-chain/alloy?rev=e1e4a2d299350eb4210e89836e2ca8dce81f4004#e1e4a2d299350eb4210e89836e2ca8dce81f4004"
 dependencies = [
  "alloy-primitives",
  "alloy-sol-types",
@@ -262,7 +262,7 @@ dependencies = [
 [[package]]
 name = "alloy-network"
 version = "0.5.4"
-source = "git+https://github.com/bnb-chain/alloy?tag=v1.0.3#576cabc6a05f6e483d10d5d16f69a67da5f0b126"
+source = "git+https://github.com/bnb-chain/alloy?rev=e1e4a2d299350eb4210e89836e2ca8dce81f4004#e1e4a2d299350eb4210e89836e2ca8dce81f4004"
 dependencies = [
  "alloy-consensus",
  "alloy-eips",
@@ -282,7 +282,7 @@ dependencies = [
 [[package]]
 name = "alloy-network-primitives"
 version = "0.5.4"
-source = "git+https://github.com/bnb-chain/alloy?tag=v1.0.3#576cabc6a05f6e483d10d5d16f69a67da5f0b126"
+source = "git+https://github.com/bnb-chain/alloy?rev=e1e4a2d299350eb4210e89836e2ca8dce81f4004#e1e4a2d299350eb4210e89836e2ca8dce81f4004"
 dependencies = [
  "alloy-consensus",
  "alloy-eips",
@@ -343,7 +343,7 @@ dependencies = [
 [[package]]
 name = "alloy-provider"
 version = "0.5.4"
-source = "git+https://github.com/bnb-chain/alloy?tag=v1.0.3#576cabc6a05f6e483d10d5d16f69a67da5f0b126"
+source = "git+https://github.com/bnb-chain/alloy?rev=e1e4a2d299350eb4210e89836e2ca8dce81f4004#e1e4a2d299350eb4210e89836e2ca8dce81f4004"
 dependencies = [
  "alloy-chains",
  "alloy-consensus",
@@ -352,14 +352,14 @@ dependencies = [
  "alloy-network",
  "alloy-network-primitives",
  "alloy-primitives",
- "alloy-pubsub 0.5.4 (git+https://github.com/bnb-chain/alloy?tag=v1.0.3)",
+ "alloy-pubsub 0.5.4 (git+https://github.com/bnb-chain/alloy?rev=e1e4a2d299350eb4210e89836e2ca8dce81f4004)",
  "alloy-rpc-client",
- "alloy-rpc-types-admin 0.5.4 (git+https://github.com/bnb-chain/alloy?tag=v1.0.3)",
+ "alloy-rpc-types-admin 0.5.4 (git+https://github.com/bnb-chain/alloy?rev=e1e4a2d299350eb4210e89836e2ca8dce81f4004)",
  "alloy-rpc-types-engine",
  "alloy-rpc-types-eth",
  "alloy-transport",
  "alloy-transport-http",
- "alloy-transport-ws 0.5.4 (git+https://github.com/bnb-chain/alloy?tag=v1.0.3)",
+ "alloy-transport-ws 0.5.4 (git+https://github.com/bnb-chain/alloy?rev=e1e4a2d299350eb4210e89836e2ca8dce81f4004)",
  "async-stream",
  "async-trait",
  "auto_impl",
@@ -402,7 +402,7 @@ dependencies = [
 [[package]]
 name = "alloy-pubsub"
 version = "0.5.4"
-source = "git+https://github.com/bnb-chain/alloy?tag=v1.0.3#576cabc6a05f6e483d10d5d16f69a67da5f0b126"
+source = "git+https://github.com/bnb-chain/alloy?rev=e1e4a2d299350eb4210e89836e2ca8dce81f4004#e1e4a2d299350eb4210e89836e2ca8dce81f4004"
 dependencies = [
  "alloy-json-rpc",
  "alloy-primitives",
@@ -442,14 +442,14 @@ dependencies = [
 [[package]]
 name = "alloy-rpc-client"
 version = "0.5.4"
-source = "git+https://github.com/bnb-chain/alloy?tag=v1.0.3#576cabc6a05f6e483d10d5d16f69a67da5f0b126"
+source = "git+https://github.com/bnb-chain/alloy?rev=e1e4a2d299350eb4210e89836e2ca8dce81f4004#e1e4a2d299350eb4210e89836e2ca8dce81f4004"
 dependencies = [
  "alloy-json-rpc",
  "alloy-primitives",
- "alloy-pubsub 0.5.4 (git+https://github.com/bnb-chain/alloy?tag=v1.0.3)",
+ "alloy-pubsub 0.5.4 (git+https://github.com/bnb-chain/alloy?rev=e1e4a2d299350eb4210e89836e2ca8dce81f4004)",
  "alloy-transport",
  "alloy-transport-http",
- "alloy-transport-ws 0.5.4 (git+https://github.com/bnb-chain/alloy?tag=v1.0.3)",
+ "alloy-transport-ws 0.5.4 (git+https://github.com/bnb-chain/alloy?rev=e1e4a2d299350eb4210e89836e2ca8dce81f4004)",
  "futures",
  "pin-project",
  "reqwest 0.12.8",
@@ -491,9 +491,9 @@ dependencies = [
 [[package]]
 name = "alloy-rpc-types-admin"
 version = "0.5.4"
-source = "git+https://github.com/bnb-chain/alloy?tag=v1.0.3#576cabc6a05f6e483d10d5d16f69a67da5f0b126"
+source = "git+https://github.com/bnb-chain/alloy?rev=e1e4a2d299350eb4210e89836e2ca8dce81f4004#e1e4a2d299350eb4210e89836e2ca8dce81f4004"
 dependencies = [
- "alloy-genesis 0.5.4 (git+https://github.com/bnb-chain/alloy?tag=v1.0.3)",
+ "alloy-genesis 0.5.4 (git+https://github.com/bnb-chain/alloy?rev=e1e4a2d299350eb4210e89836e2ca8dce81f4004)",
  "alloy-primitives",
  "serde",
  "serde_json",
@@ -537,7 +537,7 @@ dependencies = [
 [[package]]
 name = "alloy-rpc-types-engine"
 version = "0.5.4"
-source = "git+https://github.com/bnb-chain/alloy?tag=v1.0.3#576cabc6a05f6e483d10d5d16f69a67da5f0b126"
+source = "git+https://github.com/bnb-chain/alloy?rev=e1e4a2d299350eb4210e89836e2ca8dce81f4004#e1e4a2d299350eb4210e89836e2ca8dce81f4004"
 dependencies = [
  "alloy-consensus",
  "alloy-eips",
@@ -557,7 +557,7 @@ dependencies = [
 [[package]]
 name = "alloy-rpc-types-eth"
 version = "0.5.4"
-source = "git+https://github.com/bnb-chain/alloy?tag=v1.0.3#576cabc6a05f6e483d10d5d16f69a67da5f0b126"
+source = "git+https://github.com/bnb-chain/alloy?rev=e1e4a2d299350eb4210e89836e2ca8dce81f4004#e1e4a2d299350eb4210e89836e2ca8dce81f4004"
 dependencies = [
  "alloy-consensus",
  "alloy-eips",
@@ -616,7 +616,7 @@ dependencies = [
 [[package]]
 name = "alloy-serde"
 version = "0.5.4"
-source = "git+https://github.com/bnb-chain/alloy?tag=v1.0.3#576cabc6a05f6e483d10d5d16f69a67da5f0b126"
+source = "git+https://github.com/bnb-chain/alloy?rev=e1e4a2d299350eb4210e89836e2ca8dce81f4004#e1e4a2d299350eb4210e89836e2ca8dce81f4004"
 dependencies = [
  "alloy-primitives",
  "arbitrary",
@@ -627,7 +627,7 @@ dependencies = [
 [[package]]
 name = "alloy-signer"
 version = "0.5.4"
-source = "git+https://github.com/bnb-chain/alloy?tag=v1.0.3#576cabc6a05f6e483d10d5d16f69a67da5f0b126"
+source = "git+https://github.com/bnb-chain/alloy?rev=e1e4a2d299350eb4210e89836e2ca8dce81f4004#e1e4a2d299350eb4210e89836e2ca8dce81f4004"
 dependencies = [
  "alloy-primitives",
  "async-trait",
@@ -640,7 +640,7 @@ dependencies = [
 [[package]]
 name = "alloy-signer-local"
 version = "0.5.4"
-source = "git+https://github.com/bnb-chain/alloy?tag=v1.0.3#576cabc6a05f6e483d10d5d16f69a67da5f0b126"
+source = "git+https://github.com/bnb-chain/alloy?rev=e1e4a2d299350eb4210e89836e2ca8dce81f4004#e1e4a2d299350eb4210e89836e2ca8dce81f4004"
 dependencies = [
  "alloy-consensus",
  "alloy-network",
@@ -727,7 +727,7 @@ dependencies = [
 [[package]]
 name = "alloy-transport"
 version = "0.5.4"
-source = "git+https://github.com/bnb-chain/alloy?tag=v1.0.3#576cabc6a05f6e483d10d5d16f69a67da5f0b126"
+source = "git+https://github.com/bnb-chain/alloy?rev=e1e4a2d299350eb4210e89836e2ca8dce81f4004#e1e4a2d299350eb4210e89836e2ca8dce81f4004"
 dependencies = [
  "alloy-json-rpc",
  "base64 0.22.1",
@@ -746,7 +746,7 @@ dependencies = [
 [[package]]
 name = "alloy-transport-http"
 version = "0.5.4"
-source = "git+https://github.com/bnb-chain/alloy?tag=v1.0.3#576cabc6a05f6e483d10d5d16f69a67da5f0b126"
+source = "git+https://github.com/bnb-chain/alloy?rev=e1e4a2d299350eb4210e89836e2ca8dce81f4004#e1e4a2d299350eb4210e89836e2ca8dce81f4004"
 dependencies = [
  "alloy-json-rpc",
  "alloy-transport",
@@ -797,9 +797,9 @@ dependencies = [
 [[package]]
 name = "alloy-transport-ws"
 version = "0.5.4"
-source = "git+https://github.com/bnb-chain/alloy?tag=v1.0.3#576cabc6a05f6e483d10d5d16f69a67da5f0b126"
+source = "git+https://github.com/bnb-chain/alloy?rev=e1e4a2d299350eb4210e89836e2ca8dce81f4004#e1e4a2d299350eb4210e89836e2ca8dce81f4004"
 dependencies = [
- "alloy-pubsub 0.5.4 (git+https://github.com/bnb-chain/alloy?tag=v1.0.3)",
+ "alloy-pubsub 0.5.4 (git+https://github.com/bnb-chain/alloy?rev=e1e4a2d299350eb4210e89836e2ca8dce81f4004)",
  "alloy-transport",
  "futures",
  "http 1.1.0",
