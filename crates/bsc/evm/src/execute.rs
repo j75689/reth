@@ -559,6 +559,11 @@ where
 
         self.state.apply_transition(vec![(HISTORY_STORAGE_ADDRESS, transition)]);
 
+        let account_after = self.state.load_cache_account(HISTORY_STORAGE_ADDRESS).map_err(|err| {
+            BscBlockExecutionError::ProviderInnerError { error: Box::new(err.into()) }
+        })?;
+        debug!("history storage account after apply: {:?}", account_after.account_info().unwrap());
+
         Ok(true)
     }
 
