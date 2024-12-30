@@ -58,6 +58,10 @@ pub fn encode_header_with_chain_id(header: &Header, out: &mut dyn BufMut, chain_
         Encodable::encode(&header.excess_blob_gas.unwrap(), out);
         Encodable::encode(&header.parent_beacon_block_root.unwrap(), out);
     }
+
+    if header.requests_hash.is_some() {
+        Encodable::encode(&header.requests_hash.unwrap(), out);
+    }
 }
 
 fn rlp_header(header: &Header, chain_id: u64) -> alloy_rlp::Header {
