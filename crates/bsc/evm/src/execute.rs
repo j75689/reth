@@ -4,7 +4,8 @@ use core::fmt::Display;
 use std::{collections::HashMap, num::NonZeroUsize, sync::Arc};
 
 use alloy_consensus::Transaction as _;
-use alloy_primitives::{Address, BlockNumber, Bytes, B256, U256};
+use alloy_eips::eip2935::{HISTORY_STORAGE_ADDRESS, HISTORY_STORAGE_CODE};
+use alloy_primitives::{keccak256, Address, BlockNumber, Bytes, B256, U256};
 use lazy_static::lazy_static;
 use lru::LruCache;
 use parking_lot::RwLock;
@@ -35,8 +36,8 @@ use reth_prune_types::PruneModes;
 use reth_revm::{batch::BlockBatchRecord, db::states::bundle_state::BundleRetention, Evm, State};
 use revm_primitives::{
     db::{Database, DatabaseCommit},
-    BlockEnv, CfgEnvWithHandlerCfg, EVMError, EnvWithHandlerCfg, EvmState, ResultAndState,
-    TransactTo,
+    BlockEnv, Bytecode, CfgEnvWithHandlerCfg, EVMError, EnvWithHandlerCfg, EvmState,
+    ResultAndState, TransactTo,
 };
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::{debug, warn};
@@ -429,6 +430,12 @@ where
             self.upgrade_system_contracts(block.number, block.timestamp, parent.timestamp)?;
         }
 
+        // historyStorageAddress is a special system contract in bsc, which can't be upgraded
+        if self.chain_spec().is_on_prague_at_timestamp(block.timestamp, parent.timestamp) {
+            // apply history storage account
+            self.apply_history_storage_account(block.number)?;
+        }
+
         let (mut system_txs, mut receipts, mut gas_used) = {
             let evm = self.executor.evm_config.evm_with_env(&mut self.state, env.clone());
             self.executor.execute_pre_and_transactions(
@@ -526,6 +533,30 @@ where
         } else {
             Err(BscBlockExecutionError::SystemContractUpgradeError)
         }
+    }
+
+    pub(crate) fn apply_history_storage_account(
+        &mut self,
+        block_number: BlockNumber,
+    ) -> Result<bool, BscBlockExecutionError> {
+        debug!(
+            "Apply history storage account {:?} at height {:?}",
+            HISTORY_STORAGE_ADDRESS, block_number
+        );
+
+        let account = self.state.load_cache_account(HISTORY_STORAGE_ADDRESS).map_err(|err| {
+            BscBlockExecutionError::ProviderInnerError { error: Box::new(err.into()) }
+        })?;
+
+        let mut new_info = account.account_info().unwrap_or_default();
+        new_info.code_hash = keccak256(HISTORY_STORAGE_CODE.clone());
+        new_info.code = Some(Bytecode::new_raw(Bytes::from_static(&HISTORY_STORAGE_CODE)));
+        new_info.nonce = 1_u64;
+        let transition = account.change(new_info, Default::default());
+
+        self.state.apply_transition(vec![(HISTORY_STORAGE_ADDRESS, transition)]);
+
+        Ok(true)
     }
 
     pub(crate) fn eth_call(
