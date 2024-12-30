@@ -549,9 +549,12 @@ where
         })?;
 
         let mut new_info = account.account_info().unwrap_or_default();
+        debug!("history storage account before apply: {:?}", new_info);
+        debug!("history storage code hash: {:?}", keccak256(HISTORY_STORAGE_CODE.clone()));
         new_info.code_hash = keccak256(HISTORY_STORAGE_CODE.clone());
         new_info.code = Some(Bytecode::new_raw(Bytes::from_static(&HISTORY_STORAGE_CODE)));
         new_info.nonce = 1_u64;
+        new_info.balance = U256::ZERO;
         let transition = account.change(new_info, Default::default());
 
         self.state.apply_transition(vec![(HISTORY_STORAGE_ADDRESS, transition)]);
