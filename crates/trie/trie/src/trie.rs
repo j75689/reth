@@ -13,7 +13,8 @@ use alloy_consensus::EMPTY_ROOT_HASH;
 use alloy_primitives::{keccak256, Address, B256};
 use alloy_rlp::{BufMut, Encodable};
 use reth_execution_errors::{StateRootError, StorageRootError};
-use tracing::trace;
+use tracing::{trace, debug};
+use alloy_primitives::hex;
 
 #[cfg(feature = "metrics")]
 use crate::metrics::{StateRootMetrics, TrieRootMetrics};
@@ -229,6 +230,14 @@ where
                     let account = TrieAccount::from((account, storage_root));
                     account.encode(&mut account_rlp as &mut dyn BufMut);
                     hash_builder.add_leaf(Nibbles::unpack(hashed_address), &account_rlp);
+
+                    debug!(
+                        target: "trie::state_root",
+                        "hashed address: {hashed_address}, account_info: {account:#?}, account_rlp: {account_rlp:#?}",
+                        hashed_address = hex::encode(hashed_address),
+                        account = account,
+                        account_rlp = hex::encode(&account_rlp),
+                    );
 
                     // Decide if we need to return intermediate progress.
                     let total_updates_len = updated_storage_nodes +
