@@ -46,6 +46,8 @@ blst = "0.3.12"
 # async
 tokio = { workspace = true, features = ["sync", "time"] }
 
+derivative = "2.2"
+
 [dev-dependencies]
 reth-revm = { workspace = true, features = ["test-utils"] }
 reth-provider = { workspace = true, features = ["test-utils"] }

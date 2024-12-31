@@ -3,6 +3,8 @@
 use core::fmt::Display;
 use std::{collections::HashMap, num::NonZeroUsize, sync::Arc};
 
+use derivative::Derivative;
+
 use alloy_consensus::Transaction as _;
 use alloy_eips::eip2935::{HISTORY_STORAGE_ADDRESS, HISTORY_STORAGE_CODE};
 use alloy_primitives::{keccak256, Address, BlockNumber, Bytes, B256, U256};
@@ -24,7 +26,7 @@ use reth_evm::{
     execute::{
         BatchExecutor, BlockExecutionInput, BlockExecutionOutput, BlockExecutorProvider, Executor,
     },
-    system_calls::{NoopHook, OnStateHook},
+    system_calls::{NoopHook, OnStateHook, SystemCaller},
     ConfigureEvm,
 };
 use reth_primitives::{
@@ -285,7 +287,8 @@ where
 /// Expected usage:
 /// - Create a new instance of the executor.
 /// - Execute the block.
-#[derive(Debug)]
+#[derive(Derivative)]
+#[derivative(Debug)]
 pub struct BscBlockExecutor<EvmConfig, DB, P> {
     /// Chain specific evm config that's used to execute a block.
     executor: BscEvmExecutor<EvmConfig>,
@@ -295,11 +298,14 @@ pub struct BscBlockExecutor<EvmConfig, DB, P> {
     pub(crate) provider: Arc<P>,
     /// Parlia consensus instance
     pub(crate) parlia: Arc<Parlia>,
+    /// Utility to call system smart contracts.
+    #[derivative(Debug = "ignore")]
+    system_caller: SystemCaller<EvmConfig, BscChainSpec>,
     /// Prefetch channel
     prefetch_tx: Option<UnboundedSender<EvmState>>,
 }
 
-impl<EvmConfig, DB, P> BscBlockExecutor<EvmConfig, DB, P> {
+impl<EvmConfig: std::clone::Clone, DB, P> BscBlockExecutor<EvmConfig, DB, P> {
     /// Creates a new Parlia block executor.
     pub fn new(
         chain_spec: Arc<BscChainSpec>,
@@ -310,11 +316,13 @@ impl<EvmConfig, DB, P> BscBlockExecutor<EvmConfig, DB, P> {
     ) -> Self {
         let parlia = Arc::new(Parlia::new(Arc::clone(&chain_spec), parlia_config));
         let shared_provider = Arc::new(provider);
+        let system_caller = SystemCaller::new(evm_config.clone(), chain_spec.clone());
         Self {
             executor: BscEvmExecutor { chain_spec, evm_config },
             state,
             provider: shared_provider,
             parlia,
+            system_caller,
             prefetch_tx: None,
         }
     }
@@ -330,11 +338,13 @@ impl<EvmConfig, DB, P> BscBlockExecutor<EvmConfig, DB, P> {
     ) -> Self {
         let parlia = Arc::new(Parlia::new(Arc::clone(&chain_spec), parlia_config));
         let shared_provider = Arc::new(provider);
+        let system_caller = SystemCaller::new(evm_config.clone(), chain_spec.clone());
         Self {
             executor: BscEvmExecutor { chain_spec, evm_config },
             state,
             provider: shared_provider,
             parlia,
+            system_caller,
             prefetch_tx: Some(tx),
         }
     }
@@ -434,6 +444,17 @@ where
         if self.chain_spec().is_on_prague_at_timestamp(block.timestamp, parent.timestamp) {
             // apply history storage account
             self.apply_history_storage_account(block.number)?;
+        }
+
+        // If prague hardfork, insert parent block hash in the state as per EIP-2935.
+        if self.chain_spec().is_prague_active_at_timestamp(block.timestamp) {
+            let mut evm = self.executor.evm_config.evm_with_env(&mut self.state, env.clone());
+            self.system_caller.apply_blockhashes_contract_call(
+                block.timestamp,
+                block.number,
+                block.parent_hash,
+                &mut evm,
+            )?;
         }
 
         let (mut system_txs, mut receipts, mut gas_used) = {
@@ -559,9 +580,10 @@ where
 
         self.state.apply_transition(vec![(HISTORY_STORAGE_ADDRESS, transition)]);
 
-        let account_after = self.state.load_cache_account(HISTORY_STORAGE_ADDRESS).map_err(|err| {
-            BscBlockExecutionError::ProviderInnerError { error: Box::new(err.into()) }
-        })?;
+        let account_after =
+            self.state.load_cache_account(HISTORY_STORAGE_ADDRESS).map_err(|err| {
+                BscBlockExecutionError::ProviderInnerError { error: Box::new(err.into()) }
+            })?;
         debug!("history storage account after apply: {:?}", account_after.account_info().unwrap());
 
         Ok(true)
@@ -907,7 +929,7 @@ pub struct BscBatchExecutor<EvmConfig, DB, P> {
     snapshots: Vec<Snapshot>,
 }
 
-impl<EvmConfig, DB, P> BscBatchExecutor<EvmConfig, DB, P> {
+impl<EvmConfig: std::clone::Clone, DB, P> BscBatchExecutor<EvmConfig, DB, P> {
     /// Returns mutable reference to the state that wraps the underlying database.
     #[allow(unused)]
     fn state_mut(&mut self) -> &mut State<DB> {
@@ -917,7 +939,7 @@ impl<EvmConfig, DB, P> BscBatchExecutor<EvmConfig, DB, P> {
 
 impl<EvmConfig, DB, P> BatchExecutor<DB> for BscBatchExecutor<EvmConfig, DB, P>
 where
-    EvmConfig: ConfigureEvm<Header = Header>,
+    EvmConfig: std::clone::Clone + ConfigureEvm<Header = Header>,
     DB: Database<Error: Into<ProviderError> + Display>,
     P: ParliaProvider,
 {

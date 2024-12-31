@@ -10,11 +10,10 @@ use crate::{
     HashBuilder, Nibbles, TrieAccount,
 };
 use alloy_consensus::EMPTY_ROOT_HASH;
-use alloy_primitives::{keccak256, Address, B256};
+use alloy_primitives::{hex, keccak256, Address, B256};
 use alloy_rlp::{BufMut, Encodable};
 use reth_execution_errors::{StateRootError, StorageRootError};
-use tracing::{trace, debug};
-use alloy_primitives::hex;
+use tracing::{debug, trace};
 
 #[cfg(feature = "metrics")]
 use crate::metrics::{StateRootMetrics, TrieRootMetrics};

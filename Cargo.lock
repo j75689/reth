@@ -7568,6 +7568,7 @@ dependencies = [
  "alloy-primitives",
  "bitset",
  "blst",
+ "derivative",
  "lazy_static",
  "lru",
  "parking_lot",
