@@ -446,9 +446,10 @@ where
             self.apply_history_storage_account(block.number)?;
         }
 
+        let chain_spec = self.chain_spec().clone();
+        let mut evm = self.executor.evm_config.evm_with_env(&mut self.state, env.clone());
         // If prague hardfork, insert parent block hash in the state as per EIP-2935.
-        if self.chain_spec().is_prague_active_at_timestamp(block.timestamp) {
-            let mut evm = self.executor.evm_config.evm_with_env(&mut self.state, env.clone());
+        if chain_spec.is_prague_active_at_timestamp(block.timestamp) {
             self.system_caller.apply_blockhashes_contract_call(
                 block.timestamp,
                 block.number,
@@ -458,7 +459,6 @@ where
         }
 
         let (mut system_txs, mut receipts, mut gas_used) = {
-            let evm = self.executor.evm_config.evm_with_env(&mut self.state, env.clone());
             self.executor.execute_pre_and_transactions(
                 block,
                 evm,
