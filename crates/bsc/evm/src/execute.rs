@@ -38,8 +38,8 @@ use reth_prune_types::PruneModes;
 use reth_revm::{batch::BlockBatchRecord, db::states::bundle_state::BundleRetention, Evm, State};
 use revm_primitives::{
     db::{Database, DatabaseCommit},
-    BlockEnv, Bytecode, CfgEnvWithHandlerCfg, EVMError, EnvWithHandlerCfg, EvmState,
-    ResultAndState, TransactTo,
+    Account, AccountStatus, BlockEnv, Bytecode, CfgEnvWithHandlerCfg, EVMError, EnvWithHandlerCfg,
+    EvmState, ResultAndState, TransactTo,
 };
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::{debug, warn};
@@ -577,9 +577,15 @@ where
         new_info.code = Some(Bytecode::new_raw(Bytes::from_static(&HISTORY_STORAGE_CODE)));
         new_info.nonce = 1_u64;
         new_info.balance = U256::ZERO;
-        let transition = account.change(new_info, Default::default());
 
-        self.state.apply_transition(vec![(HISTORY_STORAGE_ADDRESS, transition)]);
+        self.state.commit(HashMap::from_iter([(
+            HISTORY_STORAGE_ADDRESS,
+            Account {
+                info: new_info,
+                status: AccountStatus::Touched | AccountStatus::Created,
+                storage: HashMap::default(),
+            },
+        )]));
 
         let account_after =
             self.state.load_cache_account(HISTORY_STORAGE_ADDRESS).map_err(|err| {

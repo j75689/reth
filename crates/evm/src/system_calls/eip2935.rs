@@ -49,9 +49,7 @@ where
     // if the block number is zero (genesis block) then no system transaction may occur as per
     // EIP-2935
     if block_number == 0 {
-        debug!(
-            "Skipping EIP-2935 blockhashes contract call: block number is zero"
-        );
+        debug!("Skipping EIP-2935 blockhashes contract call: block number is zero");
         return Ok(None)
     }
 
