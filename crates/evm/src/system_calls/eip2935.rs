@@ -10,6 +10,7 @@ use reth_execution_errors::{BlockExecutionError, BlockValidationError};
 use reth_primitives::Header;
 use revm::{interpreter::Host, Database, Evm};
 use revm_primitives::ResultAndState;
+use tracing::debug;
 
 /// Applies the pre-block call to the [EIP-2935] blockhashes contract, using the given block,
 /// chain specification, and EVM.
@@ -38,12 +39,19 @@ where
     EvmConfig: ConfigureEvm<Header = Header>,
 {
     if !chain_spec.is_prague_active_at_timestamp(block_timestamp) {
+        debug!(
+            "Skipping EIP-2935 blockhashes contract call: Prague is not active at block {}",
+            block_number
+        );
         return Ok(None)
     }
 
     // if the block number is zero (genesis block) then no system transaction may occur as per
     // EIP-2935
     if block_number == 0 {
+        debug!(
+            "Skipping EIP-2935 blockhashes contract call: block number is zero"
+        );
         return Ok(None)
     }
 
@@ -66,6 +74,11 @@ where
         }
     };
 
+    // NOTE: Revm currently marks these accounts as "touched" when we do the above transact calls,
+    // and includes them in the result.
+    //
+    // There should be no state changes to these addresses anyways as a result of this system call,
+    // so we can just remove them from the state returned.
     res.state.remove(&alloy_eips::eip4788::SYSTEM_ADDRESS);
     res.state.remove(&evm.block().coinbase);
 

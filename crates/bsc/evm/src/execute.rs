@@ -450,6 +450,7 @@ where
         let mut evm = self.executor.evm_config.evm_with_env(&mut self.state, env.clone());
         // If prague hardfork, insert parent block hash in the state as per EIP-2935.
         if chain_spec.is_prague_active_at_timestamp(block.timestamp) {
+            debug("Apply pre block call to EIP-2935 blockhashes contract");
             self.system_caller.apply_blockhashes_contract_call(
                 block.timestamp,
                 block.number,

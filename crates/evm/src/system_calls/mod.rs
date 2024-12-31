@@ -16,6 +16,8 @@ mod eip4788;
 mod eip7002;
 mod eip7251;
 
+use tracing::debug;
+
 /// A hook that is called after each state change.
 pub trait OnStateHook {
     /// Invoked with the result and state after each system call.
@@ -183,6 +185,7 @@ where
             if let Some(ref mut hook) = self.hook {
                 hook.on_state(&res);
             }
+            debug!("Blockhashes contract call result state: {:?}", res.state);
             evm.context.evm.db.commit(res.state);
         }
 
