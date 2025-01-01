@@ -55,6 +55,8 @@ hardfork!(
         HaberFix,
         /// BSC `Bohr` hardfork
         Bohr,
+        /// BSC `Pascal` hardfork
+        Pascal
     }
 );
 
@@ -161,12 +163,16 @@ impl BscHardfork {
             |fork| match fork {
                 EthereumHardfork::Shanghai => Some(1705996800),
                 EthereumHardfork::Cancun => Some(1718863500),
+                // TODO
+                // EthereumHardfork::Prague => Some(...),
                 _ => None,
             },
             |fork| match fork {
                 Self::Kepler => Some(1705996800),
                 Self::Feynman | Self::FeynmanFix => Some(1713419340),
                 Self::Haber => Some(1718863500),
+                // TODO
+                // Self::Pascal => Some(...),
                 _ => None,
             },
         )
@@ -179,6 +185,8 @@ impl BscHardfork {
             |fork| match fork {
                 EthereumHardfork::Shanghai => Some(1702972800),
                 EthereumHardfork::Cancun => Some(1713330442),
+                // TODO
+                // EthereumHardfork::Prague => Some(...),
                 _ => None,
             },
             |fork| match fork {
@@ -187,6 +195,8 @@ impl BscHardfork {
                 Self::FeynmanFix => Some(1711342800),
                 Self::Haber => Some(1716962820),
                 Self::HaberFix => Some(1719986788),
+                // TODO
+                // Self::Pascal => Some(...),
                 _ => None,
             },
         )
@@ -227,6 +237,9 @@ impl BscHardfork {
             (Self::Haber.boxed(), ForkCondition::Timestamp(1718863500)),
             (Self::HaberFix.boxed(), ForkCondition::Timestamp(1727316120)),
             (Self::Bohr.boxed(), ForkCondition::Timestamp(1727317200)),
+            // TODO
+            // (EthereumHardfork::Prague.boxed(), ForkCondition::Timestamp(...)),
+            // (Self::Pascal.boxed(), ForkCondition::Timestamp(...)),
         ])
     }
 
@@ -265,6 +278,9 @@ impl BscHardfork {
             (Self::Haber.boxed(), ForkCondition::Timestamp(1716962820)),
             (Self::HaberFix.boxed(), ForkCondition::Timestamp(1719986788)),
             (Self::Bohr.boxed(), ForkCondition::Timestamp(1724116996)),
+            // TODO
+            // (EthereumHardfork::Prague.boxed(), ForkCondition::Timestamp(...)),
+            // (Self::Pascal.boxed(), ForkCondition::Timestamp(...)),
         ])
     }
 
@@ -295,14 +311,16 @@ impl BscHardfork {
             (EthereumHardfork::London.boxed(), ForkCondition::Block(8)),
             (Self::Hertz.boxed(), ForkCondition::Block(8)),
             (Self::HertzFix.boxed(), ForkCondition::Block(8)),
-            (EthereumHardfork::Shanghai.boxed(), ForkCondition::Timestamp(1722442622)),
-            (Self::Kepler.boxed(), ForkCondition::Timestamp(1722442622)),
-            (Self::Feynman.boxed(), ForkCondition::Timestamp(1722442622)),
-            (Self::FeynmanFix.boxed(), ForkCondition::Timestamp(1722442622)),
-            (EthereumHardfork::Cancun.boxed(), ForkCondition::Timestamp(1722442622)),
-            (Self::Haber.boxed(), ForkCondition::Timestamp(1722442622)),
-            (Self::HaberFix.boxed(), ForkCondition::Timestamp(1722442622)),
-            (Self::Bohr.boxed(), ForkCondition::Timestamp(1722444422)),
+            (EthereumHardfork::Shanghai.boxed(), ForkCondition::Timestamp(1734677155)),
+            (Self::Kepler.boxed(), ForkCondition::Timestamp(1734677155)),
+            (Self::Feynman.boxed(), ForkCondition::Timestamp(1734677155)),
+            (Self::FeynmanFix.boxed(), ForkCondition::Timestamp(1734677155)),
+            (EthereumHardfork::Cancun.boxed(), ForkCondition::Timestamp(1734677155)),
+            (Self::Haber.boxed(), ForkCondition::Timestamp(1734677155)),
+            (Self::HaberFix.boxed(), ForkCondition::Timestamp(1734677155)),
+            (Self::Bohr.boxed(), ForkCondition::Timestamp(1734677155)),
+            (EthereumHardfork::Prague.boxed(), ForkCondition::Timestamp(1734738355)),
+            (Self::Pascal.boxed(), ForkCondition::Timestamp(1734738355)),
         ])
     }
 }
