@@ -38,8 +38,8 @@ use reth_prune_types::PruneModes;
 use reth_revm::{batch::BlockBatchRecord, db::states::bundle_state::BundleRetention, Evm, State};
 use revm_primitives::{
     db::{Database, DatabaseCommit},
-    Account, AccountStatus, BlockEnv, Bytecode, CfgEnvWithHandlerCfg, EVMError, EnvWithHandlerCfg,
-    EvmState, ResultAndState, TransactTo,
+    BlockEnv, Bytecode, CfgEnvWithHandlerCfg, EVMError, EnvWithHandlerCfg, EvmState,
+    ResultAndState, TransactTo,
 };
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::{debug, warn};
