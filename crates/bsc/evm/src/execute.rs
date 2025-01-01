@@ -3,8 +3,11 @@
 use core::fmt::Display;
 use std::{collections::HashMap, num::NonZeroUsize, sync::Arc};
 
+use derivative::Derivative;
+
 use alloy_consensus::Transaction as _;
-use alloy_primitives::{Address, BlockNumber, Bytes, B256, U256};
+use alloy_eips::eip2935::{HISTORY_STORAGE_ADDRESS, HISTORY_STORAGE_CODE};
+use alloy_primitives::{keccak256, Address, BlockNumber, Bytes, B256, U256};
 use lazy_static::lazy_static;
 use lru::LruCache;
 use parking_lot::RwLock;
@@ -23,7 +26,7 @@ use reth_evm::{
     execute::{
         BatchExecutor, BlockExecutionInput, BlockExecutionOutput, BlockExecutorProvider, Executor,
     },
-    system_calls::{NoopHook, OnStateHook},
+    system_calls::{NoopHook, OnStateHook, SystemCaller},
     ConfigureEvm,
 };
 use reth_primitives::{
@@ -35,8 +38,8 @@ use reth_prune_types::PruneModes;
 use reth_revm::{batch::BlockBatchRecord, db::states::bundle_state::BundleRetention, Evm, State};
 use revm_primitives::{
     db::{Database, DatabaseCommit},
-    BlockEnv, CfgEnvWithHandlerCfg, EVMError, EnvWithHandlerCfg, EvmState, ResultAndState,
-    TransactTo,
+    BlockEnv, Bytecode, CfgEnvWithHandlerCfg, EVMError, EnvWithHandlerCfg, EvmState,
+    ResultAndState, TransactTo,
 };
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::{debug, warn};
@@ -284,7 +287,8 @@ where
 /// Expected usage:
 /// - Create a new instance of the executor.
 /// - Execute the block.
-#[derive(Debug)]
+#[derive(Derivative)]
+#[derivative(Debug)]
 pub struct BscBlockExecutor<EvmConfig, DB, P> {
     /// Chain specific evm config that's used to execute a block.
     executor: BscEvmExecutor<EvmConfig>,
@@ -294,11 +298,14 @@ pub struct BscBlockExecutor<EvmConfig, DB, P> {
     pub(crate) provider: Arc<P>,
     /// Parlia consensus instance
     pub(crate) parlia: Arc<Parlia>,
+    /// Utility to call system smart contracts.
+    #[derivative(Debug = "ignore")]
+    system_caller: SystemCaller<EvmConfig, BscChainSpec>,
     /// Prefetch channel
     prefetch_tx: Option<UnboundedSender<EvmState>>,
 }
 
-impl<EvmConfig, DB, P> BscBlockExecutor<EvmConfig, DB, P> {
+impl<EvmConfig: std::clone::Clone, DB, P> BscBlockExecutor<EvmConfig, DB, P> {
     /// Creates a new Parlia block executor.
     pub fn new(
         chain_spec: Arc<BscChainSpec>,
@@ -309,11 +316,13 @@ impl<EvmConfig, DB, P> BscBlockExecutor<EvmConfig, DB, P> {
     ) -> Self {
         let parlia = Arc::new(Parlia::new(Arc::clone(&chain_spec), parlia_config));
         let shared_provider = Arc::new(provider);
+        let system_caller = SystemCaller::new(evm_config.clone(), chain_spec.clone());
         Self {
             executor: BscEvmExecutor { chain_spec, evm_config },
             state,
             provider: shared_provider,
             parlia,
+            system_caller,
             prefetch_tx: None,
         }
     }
@@ -329,11 +338,13 @@ impl<EvmConfig, DB, P> BscBlockExecutor<EvmConfig, DB, P> {
     ) -> Self {
         let parlia = Arc::new(Parlia::new(Arc::clone(&chain_spec), parlia_config));
         let shared_provider = Arc::new(provider);
+        let system_caller = SystemCaller::new(evm_config.clone(), chain_spec.clone());
         Self {
             executor: BscEvmExecutor { chain_spec, evm_config },
             state,
             provider: shared_provider,
             parlia,
+            system_caller,
             prefetch_tx: Some(tx),
         }
     }
@@ -429,8 +440,25 @@ where
             self.upgrade_system_contracts(block.number, block.timestamp, parent.timestamp)?;
         }
 
+        // historyStorageAddress is a special system contract in bsc, which can't be upgraded
+        if self.chain_spec().is_on_prague_at_timestamp(block.timestamp, parent.timestamp) {
+            // apply history storage account
+            self.apply_history_storage_account(block.number)?;
+        }
+
+        let chain_spec = self.chain_spec().clone();
+        let mut evm = self.executor.evm_config.evm_with_env(&mut self.state, env.clone());
+        // If prague hardfork, insert parent block hash in the state as per EIP-2935.
+        if chain_spec.is_prague_active_at_timestamp(block.timestamp) {
+            self.system_caller.apply_blockhashes_contract_call(
+                block.timestamp,
+                block.number,
+                block.parent_hash,
+                &mut evm,
+            )?;
+        }
+
         let (mut system_txs, mut receipts, mut gas_used) = {
-            let evm = self.executor.evm_config.evm_with_env(&mut self.state, env.clone());
             self.executor.execute_pre_and_transactions(
                 block,
                 evm,
@@ -526,6 +554,30 @@ where
         } else {
             Err(BscBlockExecutionError::SystemContractUpgradeError)
         }
+    }
+
+    pub(crate) fn apply_history_storage_account(
+        &mut self,
+        block_number: BlockNumber,
+    ) -> Result<bool, BscBlockExecutionError> {
+        debug!(
+            "Apply history storage account {:?} at height {:?}",
+            HISTORY_STORAGE_ADDRESS, block_number
+        );
+
+        let account = self.state.load_cache_account(HISTORY_STORAGE_ADDRESS).map_err(|err| {
+            BscBlockExecutionError::ProviderInnerError { error: Box::new(err.into()) }
+        })?;
+
+        let mut new_info = account.account_info().unwrap_or_default();
+        new_info.code_hash = keccak256(HISTORY_STORAGE_CODE.clone());
+        new_info.code = Some(Bytecode::new_raw(Bytes::from_static(&HISTORY_STORAGE_CODE)));
+        new_info.nonce = 1_u64;
+        new_info.balance = U256::ZERO;
+
+        let transition = account.change(new_info, Default::default());
+        self.state.apply_transition(vec![(HISTORY_STORAGE_ADDRESS, transition)]);
+        Ok(true)
     }
 
     pub(crate) fn eth_call(
@@ -868,7 +920,7 @@ pub struct BscBatchExecutor<EvmConfig, DB, P> {
     snapshots: Vec<Snapshot>,
 }
 
-impl<EvmConfig, DB, P> BscBatchExecutor<EvmConfig, DB, P> {
+impl<EvmConfig: std::clone::Clone, DB, P> BscBatchExecutor<EvmConfig, DB, P> {
     /// Returns mutable reference to the state that wraps the underlying database.
     #[allow(unused)]
     fn state_mut(&mut self) -> &mut State<DB> {
@@ -878,7 +930,7 @@ impl<EvmConfig, DB, P> BscBatchExecutor<EvmConfig, DB, P> {
 
 impl<EvmConfig, DB, P> BatchExecutor<DB> for BscBatchExecutor<EvmConfig, DB, P>
 where
-    EvmConfig: ConfigureEvm<Header = Header>,
+    EvmConfig: std::clone::Clone + ConfigureEvm<Header = Header>,
     DB: Database<Error: Into<ProviderError> + Display>,
     P: ParliaProvider,
 {

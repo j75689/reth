@@ -529,6 +529,14 @@ impl Parlia {
             return Err(ConsensusError::ParentBeaconBlockRootUnexpected)
         }
 
+        if self.chain_spec.is_prague_active_at_timestamp(header.timestamp) {
+            if header.requests_hash.is_none() {
+                return Err(ConsensusError::RequestsHashMissing)
+            }
+        } else if header.requests_hash.is_some() {
+            return Err(ConsensusError::RequestsHashUnexpected)
+        }
+
         Ok(())
     }
 
