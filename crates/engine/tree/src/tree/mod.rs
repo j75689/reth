@@ -2347,6 +2347,8 @@ where
             debug!(target: "engine::tree", pending = ?executed.block().num_hash() ,"updating pending block");
             // if the parent is the canonical head, we can insert the block as the pending block
             self.canonical_in_memory_state.set_pending_block(executed.clone());
+            // update metrics
+            self.metrics.tree.canonical_chain_height.set(block_number as f64);
         }
 
         self.state.tree_state.insert_executed(executed);
