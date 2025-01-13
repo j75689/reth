@@ -64,20 +64,20 @@ By increasing `vm.min_free_kbytes`, you can **prevent the Linux OOM (Out-Of-Memo
 
 #### Recommended Setting
 
-We recommend setting `vm.min_free_kbytes` to at least **5GB (5368709120 bytes)** to ensure system stability when using MDBX.
+We recommend setting `vm.min_free_kbytes` to at least **4GB (4194304 kbytes)** to ensure system stability when using MDBX.
 
 #### **Linux**
 
 To apply the setting temporarily (until reboot):
 
 ```sh
-sudo sysctl -w vm.min_free_kbytes=5368709120
+sudo sysctl -w vm.min_free_kbytes=4194304
 ```
 
 To make it persist across reboots, add the following line to /etc/sysctl.conf:
 
 ```sh
-echo "vm.min_free_kbytes=5368709120" | sudo tee -a /etc/sysctl.conf
+echo "vm.min_free_kbytes=4194304" | sudo tee -a /etc/sysctl.conf
 ```
 
 Then apply the changes:
