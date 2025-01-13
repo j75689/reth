@@ -52,6 +52,48 @@ Or, opt for installing op-reth with the command:
 make install-op
 ```
 
+## Before setting up the node
+
+### Optimizing `vm.min_free_kbytes` for MDBX Storage in Reth
+
+#### Why Adjust `vm.min_free_kbytes`?
+
+Reth uses **MDBX** as its underlying storage engine, which relies on **memory-mapped I/O (mmap)** for high-performance operations. However, MDBX can consume a significant amount of memory, and in scenarios where applications allocate memory aggressively, the system may run into **memory pressure**.
+
+By increasing `vm.min_free_kbytes`, you can **prevent the Linux OOM (Out-Of-Memory) killer** from terminating essential processes when free memory runs low. This ensures smoother performance and better stability.
+
+#### Recommended Setting
+
+We recommend setting `vm.min_free_kbytes` to at least **5GB (5368709120 bytes)** to ensure system stability when using MDBX.
+
+#### **Linux**
+
+To apply the setting temporarily (until reboot):
+
+```sh
+sudo sysctl -w vm.min_free_kbytes=5368709120
+```
+
+To make it persist across reboots, add the following line to /etc/sysctl.conf:
+
+```sh
+echo "vm.min_free_kbytes=5368709120" | sudo tee -a /etc/sysctl.conf
+```
+
+Then apply the changes:
+
+```sh
+sudo sysctl -p
+```
+
+### Verifying the Configuration
+
+To verify that the setting has been applied correctly, run:
+
+```sh
+cat /proc/sys/vm/min_free_kbytes
+```
+
 ## Run Reth for BSC
 
 ### Hardware Requirements
