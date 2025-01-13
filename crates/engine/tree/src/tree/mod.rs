@@ -2348,7 +2348,10 @@ where
             // if the parent is the canonical head, we can insert the block as the pending block
             self.canonical_in_memory_state.set_pending_block(executed.clone());
             // update metrics
-            self.metrics.tree.canonical_chain_height.set(block_number as f64);
+            if let Ok(float_value) = f64::try_from(block_number) {
+                debug!(target: "engine::tree", block_number, "Updating canonical chain height metric");
+                self.metrics.tree.canonical_chain_height.set(float_value);
+            }
         }
 
         self.state.tree_state.insert_executed(executed);
