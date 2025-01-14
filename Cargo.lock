@@ -7591,6 +7591,8 @@ dependencies = [
  "reth-provider",
  "reth-prune-types",
  "reth-revm",
+ "reth-trie-db",
+ "revm",
  "revm-primitives",
  "thiserror",
  "tokio",
@@ -7612,6 +7614,7 @@ dependencies = [
 name = "reth-bsc-node"
 version = "1.1.0"
 dependencies = [
+ "clap",
  "eyre",
  "futures",
  "futures-util",
@@ -7639,6 +7642,7 @@ dependencies = [
  "reth-rpc",
  "reth-tracing",
  "reth-transaction-pool",
+ "reth-trie",
  "reth-trie-db",
  "serde_json",
  "tokio",

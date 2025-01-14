@@ -18,8 +18,12 @@ reth-errors.workspace = true
 reth-evm.workspace = true
 reth-primitives.workspace = true
 reth-prune-types.workspace = true
-reth-revm.workspace = true
 reth-provider.workspace = true
+reth-revm = { workspace = true, features = ["std"] }
+reth-trie-db.workspace = true
+
+# revm with required ethereum, bsc features
+revm = { workspace = true, features = ["secp256k1", "blst", "c-kzg"] }
 
 # bsc
 reth-bsc-consensus.workspace = true
