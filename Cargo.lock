@@ -5442,7 +5442,7 @@ dependencies = [
  "base64 0.22.1",
  "indexmap 2.6.0",
  "metrics",
- "metrics-util",
+ "metrics-util 0.18.0",
  "quanta",
  "thiserror",
 ]
@@ -5475,6 +5475,15 @@ dependencies = [
  "metrics",
  "quanta",
  "sketches-ddsketch",
+]
+
+[[package]]
+name = "metrics-util"
+version = "0.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dbd4884b1dd24f7d6628274a2f5ae22465c337c5ba065ec9b6edccddf8acc673"
+dependencies = [
+ "metrics",
 ]
 
 [[package]]
@@ -7582,6 +7591,8 @@ dependencies = [
  "reth-provider",
  "reth-prune-types",
  "reth-revm",
+ "reth-trie-db",
+ "revm",
  "revm-primitives",
  "thiserror",
  "tokio",
@@ -7603,6 +7614,7 @@ dependencies = [
 name = "reth-bsc-node"
 version = "1.1.0"
 dependencies = [
+ "clap",
  "eyre",
  "futures",
  "futures-util",
@@ -7630,6 +7642,7 @@ dependencies = [
  "reth-rpc",
  "reth-tracing",
  "reth-transaction-pool",
+ "reth-trie",
  "reth-trie-db",
  "serde_json",
  "tokio",
@@ -9222,7 +9235,7 @@ dependencies = [
  "metrics",
  "metrics-exporter-prometheus",
  "metrics-process",
- "metrics-util",
+ "metrics-util 0.19.0",
  "procfs 0.16.0",
  "reqwest 0.12.8",
  "reth-db-api",
