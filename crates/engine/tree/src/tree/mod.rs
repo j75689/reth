@@ -84,8 +84,6 @@ pub use reth_engine_primitives::InvalidBlockHook;
 
 mod root;
 
-const MAX_SAFE_F64_INT: u64 = 9_007_199_254_740_992; // 2^53
-
 /// Keeps track of the state of the tree.
 ///
 /// ## Invariants
@@ -2350,13 +2348,8 @@ where
             // if the parent is the canonical head, we can insert the block as the pending block
             self.canonical_in_memory_state.set_pending_block(executed.clone());
             // update metrics
-            if block_number > MAX_SAFE_F64_INT {
-                debug!(target: "engine::tree", block_number, "Warning: block number exceeds safe f64 conversion");
-            };
-            let float_value = block_number as f64;
-
             debug!(target: "engine::tree", block_number, "updating canonical chain height metric");
-            self.metrics.tree.canonical_chain_height.set(float_value);
+            self.metrics.tree.canonical_chain_height.set(block_number as f64);
         }
 
         self.state.tree_state.insert_executed(executed);
