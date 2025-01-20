@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.1.1
+
+This is a maintenance release for the BSC/opBNB mainnet and testnet.
+
+### Bug Fix
+
+- [#216](https://github.com/bnb-chain/reth/pull/216): fix: support of trace API
+- [#219](https://github.com/bnb-chain/reth/pull/219): fix: missing metrics issue
+
+### Docs
+
+- [#218](https://github.com/bnb-chain/reth/pull/218): docs: add Optimizing `vm.min_free_kbytes` for MDBX Storage in Reth docs
+
 ## v1.1.0
 
 This release merges with upstream version v1.1.1, including several bug fixes.
