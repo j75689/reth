@@ -2,6 +2,11 @@
 
 use std::{sync::Arc, thread::available_parallelism};
 
+use crate::{
+    components::{NodeComponents, NodeComponentsBuilder},
+    hooks::OnComponentInitializedHook,
+    BuilderContext, NodeAdapter,
+};
 use alloy_primitives::{BlockNumber, B256};
 use eyre::{Context, OptionExt};
 use rayon::ThreadPoolBuilder;
@@ -34,6 +39,7 @@ use reth_node_core::{
 use reth_node_metrics::{
     chain::ChainSpecInfo,
     hooks::Hooks,
+    recorder::install_prometheus_recorder,
     server::{MetricServer, MetricServerConfig},
     version::VersionInfo,
 };
@@ -55,12 +61,6 @@ use reth_tracing::tracing::{debug, error, info, warn};
 use tokio::sync::{
     mpsc::{unbounded_channel, Receiver, UnboundedSender},
     oneshot, watch,
-};
-
-use crate::{
-    components::{NodeComponents, NodeComponentsBuilder},
-    hooks::OnComponentInitializedHook,
-    BuilderContext, NodeAdapter,
 };
 
 /// Allows to set a tree viewer for a configured blockchain provider.
@@ -511,6 +511,9 @@ where
 
     /// Starts the prometheus endpoint.
     pub async fn start_prometheus_endpoint(&self) -> eyre::Result<()> {
+        // ensure recorder runs upkeep periodically
+        install_prometheus_recorder().spawn_upkeep();
+
         let listen_addr = self.node_config().metrics;
         if let Some(addr) = listen_addr {
             info!(target: "reth::cli", "Starting metrics endpoint at {}", addr);
